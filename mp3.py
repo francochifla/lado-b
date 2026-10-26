@@ -29,7 +29,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.3.1"
+VERSION = "0.3.2"
 WEB_URL = "https://francochifla.github.io/lado-b/"
 
 # Prueba en computadora: MP3_LOCAL=1 imprime los links en vez de abrirlos,
@@ -122,6 +122,11 @@ def fila(n, total, nombre, estado):
 # ------------------------------------------------------------------ utilidades
 
 def abrir(url):
+    # Con un link https común, Safari reusa la pestaña que esté activa (que
+    # puede ser YouTube) y la lista se pierde. "x-safari-https" le pide a iOS
+    # abrir Safari en una pestaña nueva.
+    if url.startswith("https://"):
+        url = "x-safari-" + url
     if LOCAL:
         print(f"\n[local] abriría: {url[:300]}{'...' if len(url) > 300 else ''}")
         with open(os.path.join(BASE, "ultimo_link.txt"), "w", encoding="utf-8") as f:
