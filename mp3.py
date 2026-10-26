@@ -5,7 +5,11 @@
 #      para editarlos.
 #   2. Si es un trabajo armado en la web (empieza con "MP3JOB:"): descarga,
 #      recorta, convierte a mp3, escribe los tags y le devuelve al atajo las
-#      rutas de los archivos para que los guarde en la carpeta elegida.
+#      rutas de los archivos para que los guarde en la carpeta elegida. El
+#      atajo después abre la web con el resultado ("volver").
+#
+# Pase lo que pase, termina volviendo a la web: la idea es que a-Shell mini
+# se vea lo menos posible.
 #
 # El atajo baja la última versión de este archivo en cada uso, así que
 # cualquier cambio publicado en GitHub llega solo a todos los teléfonos.
@@ -23,7 +27,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 WEB_URL = "https://francochifla.github.io/lado-b/"
 ATAJO = "MP3"
 
@@ -77,19 +81,21 @@ def mostrar(texto, fin="\n"):
     print("\r\033[K" + texto, end=fin, flush=True)
 
 
-def encabezado(subtitulo):
+def limpiar_pantalla():
     if not LOCAL:
         comando("clear")
-    print(f"{NEGRITA}MP3{FIN} {GRIS}v{VERSION}{FIN}")
-    print(f"{GRIS}{subtitulo}{FIN}\n")
+        comando("hideKeyboard")
 
 
-def esperar_enter(mensaje):
-    print(f"\n{mensaje}")
-    try:
-        input(f"{GRIS}Tocá Enter para continuar{FIN} ")
-    except EOFError:
-        pass
+def encabezado(subtitulo):
+    limpiar_pantalla()
+    print(f"\n  {NEGRITA}LADO B{FIN}")
+    print(f"  {GRIS}{subtitulo}{FIN}")
+    print(f"  {GRIS}Al terminar volvés solo a la página.{FIN}\n")
+
+
+def volver_con_error(mensaje):
+    abrir(WEB_URL + "#error=" + urllib.parse.quote(mensaje[:300], safe=""))
 
 
 # ------------------------------------------------------------- dependencias
@@ -110,8 +116,8 @@ def preparar():
     if LOCAL or not (faltan or vieja):
         return
 
-    mostrar(("Instalando herramientas, solo la primera vez (1 o 2 minutos)..." if faltan
-             else "Buscando actualizaciones..."))
+    mostrar(("  Preparando todo, solo la primera vez (1 o 2 minutos)..." if faltan
+             else "  Buscando actualizaciones..."))
     comando(f"pip install -q --disable-pip-version-check --upgrade {DEPENDENCIAS}")
     importlib.invalidate_caches()
     with open(marca, "w") as f:
@@ -173,11 +179,10 @@ def leer_link(url):
         titulo = info.get("title")
 
     if not temas:
-        mostrar(f"{ROJO}No encontré temas en ese link.{FIN}")
-        esperar_enter("Revisá que el link sea de un video o una playlist pública.")
+        volver_con_error("No encontré temas en ese link. Revisá que sea un video o una playlist pública.")
         return
 
-    mostrar(f"{VERDE}{len(temas)} {'tema' if len(temas) == 1 else 'temas'}{FIN}. Abriendo el editor...")
+    mostrar(f"  {VERDE}{len(temas)} {'tema' if len(temas) == 1 else 'temas'}{FIN}. Volviendo a la página...")
     datos = {"v": 1, "src": url, "items": temas}
     if titulo:
         datos["pl"] = titulo
@@ -281,7 +286,7 @@ def procesar(trabajo):
     silencio = bool(trabajo.get("silence"))
     atajo = trabajo.get("shortcut") or ATAJO
 
-    encabezado(f"Descargando {len(temas)} {'tema' if len(temas) == 1 else 'temas'} a {calidad} kbps")
+    encabezado(f"Descargando {len(temas)} {'tema' if len(temas) == 1 else 'temas'}")
 
     shutil.rmtree(TMP, ignore_errors=True)
     shutil.rmtree(SALIDA, ignore_errors=True)
@@ -291,11 +296,10 @@ def procesar(trabajo):
     ydl = yt_dlp.YoutubeDL(ydl_opciones())
     ffmpeg = FFmpegPostProcessor(ydl)
     portadas = {}
-    listos, errores, usados = [], [], set()
+    listos, ids_listos, errores, usados = [], [], [], set()
 
     for n, t in enumerate(temas, 1):
-        etiqueta = f"[{n}/{len(temas)}] {t.get('artist') or ''}{' - ' if t.get('artist') else ''}{t.get('title') or t['id']}"
-        etiqueta = etiqueta[:60]
+        etiqueta = f"  {n}/{len(temas)}  {t.get('title') or t['id']}"[:44]
 
         def progreso(d, etiqueta=etiqueta):
             if d["status"] == "downloading":
@@ -340,23 +344,23 @@ def procesar(trabajo):
             shutil.move(mp3, destino)
             os.remove(original)
             listos.append(destino)
+            ids_listos.append(t["id"])
             mostrar(f"{etiqueta} {VERDE}listo{FIN}")
         except Exception as e:
             motivo = str(e).replace("ERROR: ", "").splitlines()[0][:160] if str(e) else type(e).__name__
-            errores.append((etiqueta, motivo))
-            mostrar(f"{etiqueta} {ROJO}falló{FIN}\n  {GRIS}{motivo}{FIN}")
+            errores.append({"i": t["id"], "m": motivo})
+            mostrar(f"{etiqueta} {ROJO}falló{FIN}")
 
     shutil.rmtree(TMP, ignore_errors=True)
 
-    if errores:
-        resumen = f"{VERDE}{len(listos)} listos{FIN}, {ROJO}{len(errores)} con error{FIN}."
-        if listos:
-            esperar_enter(resumen + " Los que salieron bien se guardan igual.")
-        else:
-            esperar_enter(resumen + " No se guardó nada.")
-            return
+    volver = WEB_URL + "#listo=" + comprimir({"ok": ids_listos, "err": errores})
+    if not listos:
+        # No hay nada que guardar: se vuelve directo a la web con los errores.
+        abrir(volver)
+        return
 
-    datos = json.dumps({"mp3files": listos}, ensure_ascii=False)
+    mostrar(f"\n  {VERDE}Guardando en tu carpeta...{FIN}")
+    datos = json.dumps({"mp3files": listos, "volver": volver}, ensure_ascii=False)
     abrir(f"shortcuts://run-shortcut?name={urllib.parse.quote(atajo)}"
           f"&input=text&text={urllib.parse.quote(datos, safe='')}")
 
@@ -364,10 +368,10 @@ def procesar(trabajo):
 # ----------------------------------------------------------------- inicio
 
 def main():
+    limpiar_pantalla()
     crudo = "".join(sys.argv[1:]).strip()
     if not crudo:
-        encabezado("Sin datos")
-        esperar_enter("Este script lo usa el atajo MP3. Compartí un link de YouTube con el atajo.")
+        volver_con_error("El atajo no mandó ningún link.")
         return
 
     try:
@@ -382,13 +386,12 @@ def main():
             return
         url = buscar_link(texto)
         if not url:
-            encabezado("Sin link")
-            esperar_enter("No encontré un link en lo que compartiste.")
+            volver_con_error("No encontré un link en lo que compartiste.")
             return
         leer_link(url)
     except Exception as e:
-        mostrar(f"\n{ROJO}Algo salió mal:{FIN} {e}")
-        esperar_enter("Si se repite, mandá una captura de esta pantalla.")
+        motivo = str(e).replace("ERROR: ", "").splitlines()[0][:200] if str(e) else type(e).__name__
+        volver_con_error(f"Algo salió mal: {motivo}")
 
 
 if __name__ == "__main__":

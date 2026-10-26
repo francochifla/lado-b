@@ -199,8 +199,9 @@ function vistaLista() {
     <button class="boton chico suave" data-accion="lote">${icono("lapiz")}Editar</button>
     <button class="boton chico suave" data-accion="herramientas">${icono("herramientas")}Herramientas</button>
   </div>` : ""}
+  <p class="nota pista">Tocá un tema para cambiarle el nombre, el artista, el álbum, la portada o recortarlo.</p>
   <ul class="temas">
-    ${lista.map((t, i) => `<li class="tema" data-i="${i}">${filaTema(t)}</li>`).join("")}
+    ${lista.map((t, i) => `<li class="tema" data-i="${i}" role="button" aria-label="Editar ${esc(t.title)}">${filaTema(t)}</li>`).join("")}
   </ul>`;
 }
 
@@ -217,8 +218,9 @@ function filaTema(t) {
     </div>
     <div class="meta">
       <span>${formatoTiempo(duracionFinal(t))}</span>
-      ${recortado ? '<span class="etiqueta-corte">Recorte</span>' : ""}
-    </div>`;
+      ${t.guardado ? '<span class="etiqueta-corte guardado">Guardado</span>' : recortado ? '<span class="etiqueta-corte">Recorte</span>' : ""}
+    </div>
+    <span class="editar" aria-hidden="true">${icono("lapiz")}</span>`;
 }
 
 function actualizarFila(i) {
@@ -494,10 +496,18 @@ async function abrirReproductor(t) {
     caja.innerHTML = '<div id="yt"></div>';
     estado.reproductor = new YT.Player("yt", {
       videoId: t.id,
-      host: "https://www.youtube-nocookie.com",
-      playerVars: { playsinline: 1, rel: 0, start: Math.floor(t.start || 0) },
+      playerVars: { playsinline: 1, rel: 0, origin: location.origin, start: Math.floor(t.start || 0) },
       events: {
         onStateChange: (e) => document.body.classList.toggle("girando", e.data === YT.PlayerState.PLAYING),
+        // 101 y 150: el dueño del video no deja reproducirlo fuera de YouTube (pasa mucho con discográficas).
+        onError: () => {
+          cerrarReproductor();
+          caja.innerHTML = `
+            <p class="nota" style="color:#f4ece0;padding:16px;text-align:center">
+              YouTube no deja reproducir este video fuera de su app.<br>
+              Podés escribir los tiempos a mano o usar la sugerencia de arriba, si aparece.
+            </p>`;
+        },
       },
     });
   } catch {
@@ -1052,25 +1062,82 @@ async function cargarDesdeLink(codigo) {
   guardar();
 }
 
+// Vuelta desde a-Shell mini: marca los temas guardados y cuenta qué pasó.
+function mostrarResultado({ ok = [], err = [] }) {
+  const porId = new Map(temas().map((t) => [t.id, t]));
+  for (const id of ok) {
+    const t = porId.get(id);
+    if (t) Object.assign(t, { guardado: true, sel: false });
+  }
+  for (const { i } of err) {
+    const t = porId.get(i);
+    if (t) t.sel = true;
+  }
+  guardar();
+  render();
+  const nombre = (id) => {
+    const t = porId.get(id);
+    return t ? [t.artist, t.title].filter(Boolean).join(" - ") : id;
+  };
+  abrirHoja({
+    titulo: ok.length ? "Listo" : "No se pudo descargar",
+    cuerpo: `
+      ${ok.length ? `
+      <div class="exito">
+        ${casete(`${ok.length} ${ok.length === 1 ? "tema guardado" : "temas guardados"}`, "Grabado")}
+        <p>Ya ${ok.length === 1 ? "está" : "están"} en tu carpeta. En Spotify: <b>Tu biblioteca → Archivos locales</b>.</p>
+      </div>` : ""}
+      ${err.length ? `
+      <div class="bloque">
+        <h3 class="seccion-titulo" style="margin:0">${err.length === 1 ? "Un tema falló" : `${err.length} temas fallaron`}</h3>
+        <ul class="fallos">${err.map((e) => `<li><b>${esc(nombre(e.i))}</b><span>${esc(e.m)}</span></li>`).join("")}</ul>
+        <p class="nota">Quedaron elegidos para que puedas reintentar.</p>
+      </div>` : ""}`,
+    pie: ok.length
+      ? `<a class="boton suave" href="spotify:">Abrir Spotify</a><button class="boton primario" data-accion="cerrar">Seguir</button>`
+      : `<button class="boton primario" data-accion="cerrar">Entendido</button>`,
+  });
+}
+
 async function arrancar() {
   aplicarTema();
-  const codigo = location.hash.startsWith("#d=") ? location.hash.slice(3) : null;
-  if (codigo) {
-    history.replaceState(null, "", location.pathname + location.search);
+  const [clave, ...resto] = location.hash.slice(1).split("=");
+  const valor = resto.join("=");
+  if (clave && valor) history.replaceState(null, "", location.pathname + location.search);
+
+  const actual = guardado.leer("actual");
+  if (actual) estado.sesion = guardado.leer("s:" + actual);
+
+  if (clave === "d") {
     try {
-      await cargarDesdeLink(codigo);
+      await cargarDesdeLink(valor);
+      render();
+      // Con un solo tema no hay lista que mirar: se abre directo el editor.
+      if (temas().length === 1) abrirEditor(0);
+      return;
     } catch {
       avisar("El link llegó incompleto. Probá compartirlo de nuevo.");
     }
-  } else {
-    const actual = guardado.leer("actual");
-    if (actual) estado.sesion = guardado.leer("s:" + actual);
   }
   render();
+  if (clave === "listo") {
+    try {
+      mostrarResultado(await descomprimir(valor));
+    } catch {
+      avisar("Descarga terminada.");
+    }
+  }
+  if (clave === "error") {
+    abrirHoja({
+      titulo: "Algo no salió",
+      cuerpo: `<p>${esc(decodeURIComponent(valor))}</p><p class="nota">Si se repite, probá de nuevo en un rato: YouTube a veces rechaza pedidos seguidos.</p>`,
+      pie: '<button class="boton primario" data-accion="cerrar">Entendido</button>',
+    });
+  }
 }
 
 window.addEventListener("hashchange", () => {
-  if (location.hash.startsWith("#d=")) arrancar();
+  if (/^#(d|listo|error)=/.test(location.hash)) arrancar();
 });
 
 arrancar();

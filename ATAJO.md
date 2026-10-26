@@ -25,19 +25,20 @@ Lo que va **adentro del Si** es la vuelta: el script terminó y manda la lista d
 - **Obtener diccionario de** → **Texto**
 - **Obtener valor para** `mp3files` **en** → **Diccionario**
 - **Repetir con cada** elemento de → **Valor del diccionario**
-  - **Get File** (de a-Shell mini). En el nombre del archivo, poné la variable **Elemento de repetición**.
+  - **Get File** (de a-Shell mini). En el nombre del archivo, poné la variable **Elemento de repetición**. Tocá la flecha y desactivá **Mostrar al ejecutar**, para que no aparezca un cartel por cada archivo.
 - *(fin del Repetir)*
 - **Guardar archivo** → **Resultados de la repetición**
   - Desactivá **Preguntar dónde guardar**.
-  - Carpeta: **En mi iPhone → Spotify**.
+  - Carpeta: **En mi iPhone → Spotify** (se elige tocando la carpeta, no se escribe).
   - Activá **Sobrescribir si el archivo existe**.
-- **Mostrar notificación**: `Listo. Ya están en tu carpeta.`
+- **Obtener valor para** `volver` **en** → **Diccionario**
+- **Abrir URL** → **Valor del diccionario**. Vuelve a la web, que muestra el aviso de "Listo".
 
 Lo que va en **De lo contrario** es la ida: llegó un link o un trabajo armado en la web.
 
 - **Codificar en base64** → **Texto**
   - Tocá la flecha de la acción y poné **Saltos de línea: Ninguno**. Este paso es importante: con saltos de línea el comando se corta.
-- **Execute Command** (de a-Shell mini). En el comando, escribí estas líneas e insertá la variable **Texto codificado** donde dice `[Texto codificado]`:
+- **Texto** (una segunda acción de texto) con estas líneas. Al final de la última, después de un espacio, insertá la variable **Texto codificado** como burbuja:
 
   ```
   cd $HOME/Documents
@@ -47,14 +48,15 @@ Lo que va en **De lo contrario** es la ida: llegó un link o un trabajo armado e
   python mp3.py [Texto codificado]
   ```
 
-  Tocá la flecha de la acción y elegí que **abra la app** (Open Window / Abrir ventana). Las descargas necesitan la app abierta.
+- **Execute Command** (de a-Shell mini) → solo la variable **Texto** de la acción anterior. No agregues más comandos con el **+**: cada uno corre por separado.
+  - Tocá la flecha y poné **Abrir la app para ejecutar los comandos: sí**. Las descargas necesitan la app abierta.
 
 **Fin del Si.**
 
 ## 3. Probar
 
 1. En YouTube, compartí un video → **MP3**. Se abre a-Shell mini, después Safari con la lista.
-2. Tocá **Descargar**. Se abre Atajos, después a-Shell mini descarga y al terminar vuelve a Atajos, que guarda los mp3.
+2. Tocá **Descargar**. Se abre a-Shell mini, descarga, Atajos guarda los mp3 y volvés solo a la web con el aviso de "Listo".
 3. Fijate en **Archivos → En mi iPhone → Spotify**.
 
 La primera vez Atajos pide varios permisos (abrir a-Shell mini, abrir URLs, guardar en la carpeta). Tocá **Permitir siempre** donde aparezca.
