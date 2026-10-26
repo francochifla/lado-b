@@ -452,6 +452,14 @@ details.recorte > summary { cursor: pointer; margin: 0; list-style-position: ins
 details.recorte > summary .nota { text-transform: none; letter-spacing: 0; font-family: var(--sans); }
 details.recorte[open] > summary { margin-bottom: 14px; }
 
+.version {
+  margin: 36px 0 0;
+  text-align: center;
+  font: 12px/1.6 var(--mono);
+  color: var(--tinta-3);
+}
+.version .enlace { font: inherit; color: var(--tinta-2); }
+
 .pista { margin: 14px 0 4px; }
 .tema .editar { color: var(--tinta-3); display: grid; place-items: center; }
 .tema .editar svg.i { width: 18px; height: 18px; }

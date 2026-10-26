@@ -991,6 +991,9 @@ document.addEventListener("click", async (e) => {
     case "agregar-inicio":
       abrirAgregarInicio();
       break;
+    case "actualizar":
+      buscarActualizacion();
+      break;
     case "tutorial-paso":
       abrirTutorial(Number(el.dataset.paso));
       break;
@@ -1199,4 +1202,66 @@ window.addEventListener("hashchange", () => {
   if (/^#(d|listo|error|carpeta)=/.test(location.hash)) arrancar();
 });
 
-arrancar();
+// ------------------------------------------------------------------ versión
+//
+// Safari guarda los archivos de la página un rato, y más todavía si se abre
+// desde un ícono en la pantalla de inicio. Al abrir, se compara esta versión
+// con version.json, que se pide siempre sin caché: si hay una más nueva, se
+// vuelven a bajar los archivos y se recarga. Al publicar, se cambia el número
+// acá y en version.json.
+
+const VERSION = "0.4.0";
+const ARCHIVOS = ["./", "instalar.html", "manifest.webmanifest",
+  "assets/app.js", "assets/datos.js", "assets/servicios.js", "assets/config.js", "assets/estilo.css"];
+
+async function versionPublicada() {
+  try {
+    const r = await fetch("version.json", { cache: "no-store", signal: AbortSignal.timeout(2500) });
+    return (await r.json()).version;
+  } catch {
+    return null; // sin conexión o lento: se sigue con lo que hay
+  }
+}
+
+async function actualizarArchivos() {
+  // cache: "reload" baja cada archivo de nuevo y reemplaza la copia guardada.
+  await Promise.all(ARCHIVOS.map((a) => fetch(a, { cache: "reload" }).catch(() => {})));
+}
+
+function yaSeIntento(version) {
+  // Evita recargar en bucle si GitHub todavía está terminando de publicar.
+  try {
+    if (sessionStorage.getItem("ladob:recarga") === version) return true;
+    sessionStorage.setItem("ladob:recarga", version);
+  } catch {}
+  return false;
+}
+
+function mostrarVersion() {
+  $("#version").innerHTML =
+    `Lado B · versión ${VERSION} · <button class="enlace" data-accion="actualizar">Buscar actualización</button>`;
+}
+
+async function buscarActualizacion() {
+  avisar("Buscando…");
+  const publicada = await versionPublicada();
+  if (!publicada) return avisar("No pude revisar. ¿Hay conexión?");
+  if (publicada === VERSION) return avisar(`Tenés la última versión (${VERSION}).`);
+  avisar(`Actualizando a la versión ${publicada}…`, 10000);
+  await actualizarArchivos();
+  location.reload();
+}
+
+async function iniciar() {
+  const publicada = await versionPublicada();
+  // La recarga conserva el #d=… del link, así que no se pierde la lista.
+  if (publicada && publicada !== VERSION && !yaSeIntento(publicada)) {
+    await actualizarArchivos();
+    location.reload();
+    return;
+  }
+  mostrarVersion();
+  arrancar();
+}
+
+iniciar();

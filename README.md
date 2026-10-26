@@ -35,6 +35,8 @@ La web se publica sola con GitHub Pages desde la rama `main`: cada `git push` la
 
 Si el repositorio cambia de nombre o de dueño, hay que actualizar `WEB_URL` en `mp3.py`.
 
+Al publicar cambios en la web, subí el número de versión en `version.json` y en `VERSION` de `assets/app.js` (los dos iguales). Las páginas abiertas o guardadas en la pantalla de inicio comparan ese número al abrir y, si cambió, se actualizan solas. La versión se ve al pie de la página.
+
 ## Probar en la computadora
 
 La web:
