@@ -31,7 +31,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.4.1"
+VERSION = "0.4.2"
 WEB_URL = "https://francochifla.github.io/lado-b/"
 
 # Prueba en computadora: MP3_LOCAL=1 imprime los links en vez de abrirlos,
@@ -278,6 +278,7 @@ def elegir_carpeta(destino="spotify"):
         return None
     config = leer_config()
     config["carpeta"] = carpeta
+    config["nombre"] = nombre_carpeta(carpeta, destino)
     guardar_config(config)
     return carpeta
 
@@ -294,26 +295,33 @@ def entrar_a_carpeta(carpeta):
 
 def carpeta_destino(destino="spotify"):
     """La carpeta donde guardar y su nombre para mostrar en la web."""
-    carpeta = leer_config().get("carpeta")
-    if not (carpeta and entrar_a_carpeta(carpeta)):
-        carpeta = elegir_carpeta(destino)
+    config = leer_config()
+    carpeta = config.get("carpeta")
+    if carpeta and entrar_a_carpeta(carpeta):
+        return carpeta, config.get("nombre") or nombre_carpeta(carpeta, destino)
+    carpeta = elegir_carpeta(destino)
     if carpeta:
-        return carpeta, nombre_carpeta(carpeta)
+        return carpeta, nombre_carpeta(carpeta, destino)
     os.makedirs(RESPALDO, exist_ok=True)
     return RESPALDO, "a-Shell mini → Lado B"
 
 
-def nombre_carpeta(carpeta):
-    # La carpeta de una app se ve como ".../<app>/Documents"; mejor mostrar
-    # el nombre que la persona reconoce.
+ES_CODIGO = re.compile(r"^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$", re.I)
+
+
+def nombre_carpeta(carpeta, destino="spotify"):
+    """El nombre que la persona reconoce. La carpeta de una app en iOS es
+    ".../Application/<código>/Documents": ni el código ni "Documents" dicen
+    nada, así que en ese caso se usa lo que eligió en la web."""
+    partes = [p for p in carpeta.split(os.sep) if p]
+    ultima = partes[-1] if partes else ""
     if "spotify" in carpeta.lower():
         return "Spotify"
-    partes = [p for p in carpeta.split(os.sep) if p]
-    if partes and partes[-1] in ("Downloads", "Descargas"):
+    if ultima in ("Downloads", "Descargas"):
         return "Descargas"
-    if partes and partes[-1] == "Documents" and len(partes) > 1:
-        return partes[-2]
-    return partes[-1] if partes else carpeta
+    if not ultima or ultima == "Documents" or ES_CODIGO.match(ultima):
+        return RUTAS.get(destino, RUTAS["spotify"])[0].split("→")[-1].strip()
+    return ultima
 
 
 # ------------------------------------------------------- modo 1: leer link
@@ -582,7 +590,7 @@ def cambiar_carpeta(destino, clave="carpeta"):
     vez (#preparado) y desde Ajustes (#carpeta)."""
     carpeta = elegir_carpeta(destino)
     if carpeta:
-        abrir(WEB_URL + f"#{clave}=" + urllib.parse.quote(nombre_carpeta(carpeta), safe=""))
+        abrir(WEB_URL + f"#{clave}=" + urllib.parse.quote(nombre_carpeta(carpeta, destino), safe=""))
     else:
         volver_con_error("No se eligió ninguna carpeta. Los temas se van a guardar en a-Shell mini → Lado B "
                          "hasta que elijas otra en Ajustes.")

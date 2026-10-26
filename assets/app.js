@@ -765,6 +765,13 @@ const esIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.p
 const RUTAS = { spotify: "Spotify", descargas: "Descargas" };
 const destino = () => estado.ajustes.destino || "spotify";
 
+// iOS nombra la carpeta de cada app con un código (5B3FAA99-…); si llega eso,
+// se muestra lo que la persona eligió.
+const nombreCarpeta = (nombre) =>
+  !nombre || /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(nombre) || nombre === "Documents"
+    ? RUTAS[destino()]
+    : nombre;
+
 const mockRuta = (carpeta) => `
   <div class="mock mock-ruta">
     <span>En mi iPhone</span><span class="flecha">›</span><span class="si">${carpeta}</span>
@@ -1220,6 +1227,7 @@ function cargarDesdeDatos(datos) {
 // Vuelta desde a-Shell mini: marca los temas guardados y cuenta qué pasó.
 function mostrarResultado({ ok = [], err = [], dest = "" }) {
   const respaldo = dest.startsWith("a-Shell");
+  if (dest && !respaldo) dest = nombreCarpeta(dest);
   if (ok.length) guardado.escribir("preparado", true);
   const porId = new Map(temas().map((t) => [t.id, t]));
   for (const id of ok) {
@@ -1245,7 +1253,10 @@ function mostrarResultado({ ok = [], err = [], dest = "" }) {
         ${respaldo ? `
         <p>Quedaron en <b>Archivos → En mi iPhone → a-Shell mini → Lado B</b>, porque no se eligió otra carpeta.</p>
         <a class="boton suave" href="${esc(linkAShell(estado.ajustes.app, "MP3CARPETA:" + destino()))}">Elegir la carpeta de ${RUTAS[destino()]}</a>` : `
-        <p>Ya ${ok.length === 1 ? "está" : "están"} en ${dest ? `<b>${esc(dest)}</b>` : "tu carpeta"}. En Spotify: <b>Tu biblioteca → Archivos locales</b>.</p>`}
+        <p>Ya ${ok.length === 1 ? "está" : "están"} en ${dest ? `<b>${esc(dest)}</b>` : "tu carpeta"}.
+          ${(dest || RUTAS[destino()]) === "Spotify"
+            ? "En Spotify: <b>Tu biblioteca → Archivos locales</b>."
+            : "Los encontrás en la app <b>Archivos</b>."}</p>`}
       </div>` : ""}
       ${err.length ? `
       <div class="bloque">
@@ -1289,13 +1300,13 @@ async function arrancar() {
   }
   if (clave === "carpeta") {
     guardado.escribir("preparado", true);
-    avisar(`Listo: ahora se guarda en ${decodeURIComponent(valor)}.`, 4000);
+    avisar(`Listo: ahora se guarda en ${nombreCarpeta(decodeURIComponent(valor))}.`, 4000);
   }
   if (clave === "preparado") {
     // Volvió de preparar todo desde el tutorial: se sigue en el paso siguiente.
     guardado.escribir("preparado", true);
     abrirTutorial(4);
-    avisar(`Todo listo: la música se guarda en ${decodeURIComponent(valor)}.`, 4000);
+    avisar(`Todo listo: la música se guarda en ${nombreCarpeta(decodeURIComponent(valor))}.`, 4000);
   }
   if (!clave && !guardado.leer("tutorial")) abrirTutorial(0);
   if (clave === "error") {
@@ -1319,7 +1330,7 @@ window.addEventListener("hashchange", () => {
 // vuelven a bajar los archivos y se recarga. Al publicar, se cambia el número
 // acá y en version.json.
 
-const VERSION = "0.5.1";
+const VERSION = "0.5.2";
 const ARCHIVOS = ["./", "instalar.html", "manifest.webmanifest",
   "assets/app.js", "assets/datos.js", "assets/servicios.js", "assets/config.js", "assets/estilo.css"];
 
