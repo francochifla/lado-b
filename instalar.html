@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Instalar Lado B</title>
+  <meta name="description" content="Cómo instalar Lado B en tu iPhone en dos minutos.">
+  <meta name="theme-color" content="#f3ead9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1d1a17" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="assets/icono.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/icono-180.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="assets/estilo.css">
+</head>
+<body>
+  <div class="pagina guia">
+    <header class="cabecera">
+      <a class="marca" href="./"><b>Lado B</b><span>mp3</span></a>
+      <a class="boton chico suave" href="./">Ir al editor</a>
+    </header>
+    <div class="rayas" aria-hidden="true"></div>
+
+    <h1>Instalación</h1>
+    <p>Una sola vez, unos dos minutos. No hace falta crear ninguna cuenta y es gratis.</p>
+
+    <div class="pasos-guia">
+      <section class="paso">
+        <span class="num">1</span>
+        <div>
+          <h2>Instalá a-Shell mini</h2>
+          <p>Es la app que hace la descarga dentro de tu teléfono. Es gratis, ocupa unos 300 MB y no vas a tener que usarla: trabaja sola cuando la llama el atajo.</p>
+          <a class="boton suave" id="app-store" href="#">Abrir en la App Store</a>
+        </div>
+      </section>
+
+      <section class="paso">
+        <span class="num">2</span>
+        <div>
+          <h2>Agregá el atajo</h2>
+          <p>Tocá el botón y después <b>Agregar atajo</b>. Si te pregunta dónde guardar la música, elegí <b>En mi iPhone → Spotify</b>.</p>
+          <a class="boton primario" id="atajo" href="#">Agregar el atajo</a>
+          <p class="nota oculto" id="sin-atajo">El link del atajo todavía no está publicado.</p>
+        </div>
+      </section>
+
+      <section class="paso">
+        <span class="num">3</span>
+        <div>
+          <h2>Activá los archivos locales en Spotify</h2>
+          <p>En Spotify: tocá tu foto → <b>Configuración y privacidad</b> → <b>Archivos locales</b> → activá <b>Mostrar archivos de audio de este dispositivo</b>. El nombre exacto puede cambiar un poco según la versión.</p>
+          <p>Los temas aparecen en <b>Tu biblioteca → Archivos locales</b>.</p>
+        </div>
+      </section>
+
+      <section class="paso">
+        <span class="num">4</span>
+        <div>
+          <h2>Probalo</h2>
+          <p>En la app de YouTube, abrí un video o una playlist y tocá <b>Compartir</b> → <b>Más</b> → <b>MP3</b>.</p>
+          <p>La primera vez tarda uno o dos minutos porque instala lo que necesita, y Atajos puede pedirte permisos: tocá <b>Permitir</b>. Después se abre esta web con la lista para editar.</p>
+        </div>
+      </section>
+    </div>
+
+    <section class="tarjeta">
+      <h2>Qué significa cada dato</h2>
+      <p class="nota">Los cuatro primeros son los que se ven en Spotify. El resto es opcional.</p>
+      <dl class="campos">
+        <div><dt>Título</dt><dd>El nombre de la canción. Es lo que aparece en grande cuando suena.</dd></div>
+        <div><dt>Artista</dt><dd>Quién la canta. Aparece debajo del título.</dd></div>
+        <div><dt>Álbum</dt><dd>El disco. Los temas con el mismo álbum quedan juntos.</dd></div>
+        <div><dt>Portada</dt><dd>La imagen cuadrada. Puede ser la del video, la de iTunes o una tuya.</dd></div>
+        <div><dt>Artista del álbum</dt><dd>Mantiene el disco unido aunque algún tema tenga invitados ("feat.").</dd></div>
+        <div><dt>Nº de pista</dt><dd>El orden dentro del disco.</dd></div>
+        <div><dt>Año y género</dt><dd>Los muestran Apple Music, VLC y otros reproductores. Spotify no.</dd></div>
+      </dl>
+    </section>
+
+    <section style="margin-top:28px">
+      <h2>Preguntas</h2>
+
+      <details id="carpeta">
+        <summary>¿Cómo cambio la carpeta donde se guardan?</summary>
+        <p>Abrí <b>Atajos</b>, mantené apretado <b>MP3</b> → <b>Editar</b>. En la acción <b>Guardar archivo</b>, tocá la carpeta y elegí otra. Si preferís elegir cada vez, activá <b>Preguntar dónde guardar</b>.</p>
+      </details>
+
+      <details>
+        <summary>No me aparece MP3 al compartir</summary>
+        <p>En la hoja de compartir, deslizá la fila de abajo hasta el final, tocá <b>Editar acciones</b> y activá <b>MP3</b>. También podés copiar el link y pegarlo en la página principal.</p>
+      </details>
+
+      <details>
+        <summary>¿Cuánto ocupa cada canción?</summary>
+        <p>A 192 kbps, cerca de 1,4 MB por minuto: un tema de 4 minutos ocupa unos 6 MB. A 128 kbps ocupa un tercio menos y casi no se nota la diferencia. Se cambia en Ajustes.</p>
+      </details>
+
+      <details>
+        <summary>¿Por qué hace falta a-Shell mini?</summary>
+        <p>Safari no puede bajar el audio de YouTube por sí solo: el navegador lo bloquea por seguridad. a-Shell mini hace esa parte en tu teléfono, sin pasar por ningún servidor, así que no hay límites ni costos.</p>
+      </details>
+
+      <details>
+        <summary>Dejó de funcionar</summary>
+        <p>YouTube cambia cosas seguido. Las herramientas se actualizan solas cada pocos días. Para forzarlo, abrí a-Shell mini y escribí <code>pip install -U yt-dlp</code>.</p>
+      </details>
+
+      <details>
+        <summary>¿Funciona en Android?</summary>
+        <p>Todavía no. Está pensado para sumarlo más adelante.</p>
+      </details>
+
+      <details>
+        <summary>¿Es legal?</summary>
+        <p>Usalo para música que tengas derecho a descargar: tus propios videos, contenido libre o con permiso del autor.</p>
+      </details>
+    </section>
+  </div>
+
+  <script type="module">
+    import { CONFIG } from "./assets/config.js";
+    document.getElementById("app-store").href = CONFIG.appStoreAShell;
+    const atajo = document.getElementById("atajo");
+    if (CONFIG.atajoICloud) atajo.href = CONFIG.atajoICloud;
+    else {
+      atajo.classList.add("oculto");
+      document.getElementById("sin-atajo").classList.remove("oculto");
+    }
+    try {
+      const tema = JSON.parse(localStorage.getItem("ladob:ajustes") || "{}").tema;
+      if (tema && tema !== "auto") document.documentElement.dataset.tema = tema;
+    } catch {}
+  </script>
+</body>
+</html>
