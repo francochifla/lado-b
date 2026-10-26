@@ -1319,7 +1319,7 @@ window.addEventListener("hashchange", () => {
 // vuelven a bajar los archivos y se recarga. Al publicar, se cambia el número
 // acá y en version.json.
 
-const VERSION = "0.5.0";
+const VERSION = "0.5.1";
 const ARCHIVOS = ["./", "instalar.html", "manifest.webmanifest",
   "assets/app.js", "assets/datos.js", "assets/servicios.js", "assets/config.js", "assets/estilo.css"];
 

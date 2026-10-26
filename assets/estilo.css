@@ -621,7 +621,7 @@ dialog.hoja::backdrop { background: rgba(20, 16, 12, 0.45); }
 
 /* -------------------------------------------------------- portada / opciones */
 
-.opciones-tapa { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+.opciones-tapa { display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 4px; scrollbar-width: none; }
 .opcion-tapa {
   flex: none;
   display: grid;
@@ -638,15 +638,19 @@ dialog.hoja::backdrop { background: rgba(20, 16, 12, 0.45); }
 .opcion-tapa .cuadro {
   width: 72px;
   height: 72px;
-  border-radius: 8px;
-  border: 2px solid transparent;
-  outline: 1.5px solid var(--linea);
+  border-radius: 10px;
+  border: 1.5px solid var(--linea);
   background: var(--papel-2) center / cover no-repeat;
   display: grid;
   place-items: center;
   color: var(--tinta-2);
 }
-.opcion-tapa[aria-pressed="true"] .cuadro { border-color: var(--papel); outline: 2.5px solid var(--naranja); }
+/* El marco va por dentro del cuadro (borde + sombra interior color papel):
+   un contorno por fuera lo recortaba la fila, que se desplaza de costado. */
+.opcion-tapa[aria-pressed="true"] .cuadro {
+  border: 3px solid var(--naranja);
+  box-shadow: inset 0 0 0 2px var(--papel);
+}
 .opcion-tapa[aria-pressed="true"] { color: var(--tinta); }
 
 /* -------------------------------------------------------------- recorte */
