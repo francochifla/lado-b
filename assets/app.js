@@ -198,6 +198,14 @@ function vistaLista() {
       <span>El link era de un tema dentro de una playlist. Quedó elegido solo ese.</span>
       <button class="boton chico" data-accion="todos">Elegir los ${lista.length}</button>
     </div>` : ""}
+    <form class="pegar otro-link" data-form="link">
+      <label class="sr" for="otro-link">Otro link de YouTube</label>
+      <div class="fila">
+        <input class="entrada" id="otro-link" name="link" type="url" inputmode="url" autocomplete="off" placeholder="Pegá otro link de YouTube">
+        <button class="boton suave" type="button" data-accion="pegar">Pegar</button>
+        <button class="boton primario" type="submit">Leer</button>
+      </div>
+    </form>
   </section>
   ${lista.length > 1 ? `
   <div class="barra">
@@ -367,7 +375,7 @@ function abrirEditor(i) {
         ${campo("artist", "Artista", t.artist, { n: 2, ayuda: "Varios artistas: separalos con coma o usá feat. en el título." })}
         ${campo("album", "Álbum", t.album, { n: 3, ayuda: "Opcional. Temas con el mismo álbum se agrupan juntos." })}
         <details ${masDatos ? "open" : ""}>
-          <summary class="nota" style="cursor:pointer">Más datos (opcionales)</summary>
+          <summary class="nota">Más datos (opcionales)</summary>
           <div class="bloque" style="margin-top:14px">
             ${campo("albumArtist", "Artista del álbum", t.albumArtist, { ayuda: "Mantiene el disco junto aunque haya temas con invitados." })}
             <div class="tres">
@@ -383,7 +391,7 @@ function abrirEditor(i) {
         <div id="tapas">${opcionesTapa(t)}</div>
       </div>
       <details class="recorte" ${t.start || t.end ? "open" : ""}>
-        <summary class="seccion-titulo">Recortar inicio o final <span class="nota">(opcional)</span></summary>
+        <summary class="nota">Recortar inicio o final (opcional)</summary>
         <div class="bloque">
         <div id="sugerencia"></div>
         <div class="reproductor" id="reproductor">
@@ -994,6 +1002,13 @@ document.addEventListener("click", async (e) => {
     case "actualizar":
       buscarActualizacion();
       break;
+    case "otro-link": {
+      cerrarHoja();
+      const entrada = $('[name="link"]');
+      entrada?.scrollIntoView({ block: "center", behavior: "smooth" });
+      entrada?.focus();
+      break;
+    }
     case "tutorial-paso":
       abrirTutorial(Number(el.dataset.paso));
       break;
@@ -1152,7 +1167,7 @@ function mostrarResultado({ ok = [], err = [], dest = "" }) {
         <p class="nota">Quedaron elegidos para que puedas reintentar.</p>
       </div>` : ""}`,
     pie: ok.length
-      ? `<a class="boton suave" href="spotify:">Abrir Spotify</a><button class="boton primario" data-accion="cerrar">Seguir</button>`
+      ? `<a class="boton suave" href="spotify:">Abrir Spotify</a><button class="boton primario" data-accion="otro-link">Otro link</button>`
       : `<button class="boton primario" data-accion="cerrar">Entendido</button>`,
   });
 }
@@ -1210,7 +1225,7 @@ window.addEventListener("hashchange", () => {
 // vuelven a bajar los archivos y se recarga. Al publicar, se cambia el número
 // acá y en version.json.
 
-const VERSION = "0.4.0";
+const VERSION = "0.4.1";
 const ARCHIVOS = ["./", "instalar.html", "manifest.webmanifest",
   "assets/app.js", "assets/datos.js", "assets/servicios.js", "assets/config.js", "assets/estilo.css"];
 
