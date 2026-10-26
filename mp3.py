@@ -29,7 +29,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.3.2"
+VERSION = "0.3.3"
 WEB_URL = "https://francochifla.github.io/lado-b/"
 
 # Prueba en computadora: MP3_LOCAL=1 imprime los links en vez de abrirlos,
@@ -48,7 +48,7 @@ TMP = os.path.join(BASE, "tmp")
 SALIDA = os.path.join(BASE, "salida")
 RESPALDO = os.path.join(BASE if LOCAL else os.path.join(os.path.expanduser("~"), "Documents"), "Lado B")
 CONFIG = os.path.join(BASE, "config.json")
-DEPENDENCIAS = "yt-dlp yt-dlp-ejs yt-dlp-apple-webkit-jsi mutagen"
+DEPENDENCIAS = "yt-dlp mutagen"
 DIAS_ENTRE_ACTUALIZACIONES = 3
 
 
@@ -169,7 +169,22 @@ def guardar_config(config):
 
 # ------------------------------------------------------------- dependencias
 
+def quitar_complemento_webkit():
+    """Desinstala, una sola vez, un complemento que versiones anteriores
+    instalaban. Corre el código de YouTube en una ventana web oculta y en el
+    iPhone eso abre la app de YouTube en medio de la lectura: a-Shell queda en
+    segundo plano y iOS ya no le deja volver a Safari."""
+    marca = os.path.join(BASE, ".sin-webkit")
+    if LOCAL or os.path.exists(marca):
+        return
+    comando("pip uninstall -y -q yt-dlp-apple-webkit-jsi")
+    importlib.invalidate_caches()
+    with open(marca, "w") as f:
+        f.write(str(time.time()))
+
+
 def preparar():
+    quitar_complemento_webkit()
     marca = os.path.join(BASE, ".actualizado")
     faltan = False
     try:
@@ -326,7 +341,12 @@ def leer_link(url):
     import yt_dlp
 
     casete("Leyendo el link", ["Buscando los temas…", "En un momento volvés a Lado B."])
-    with yt_dlp.YoutubeDL(ydl_opciones(extract_flat="in_playlist", skip_download=True)) as ydl:
+    # Para la lista alcanza con títulos y duraciones: player_skip=js evita
+    # bajar y ejecutar el código del reproductor de YouTube, que acá no hace
+    # falta y es lo más lento.
+    opciones = ydl_opciones(extract_flat="in_playlist", skip_download=True,
+                            extractor_args={"youtube": {"player_skip": ["js"]}})
+    with yt_dlp.YoutubeDL(opciones) as ydl:
         info = ydl.extract_info(url, download=False)
 
     entradas = info.get("entries")
