@@ -24,7 +24,7 @@ La primera descarga abre el selector de carpetas de iOS (`pickFolder`); a-Shell 
 | `ATAJO.md` | Atajo opcional para compartir desde la app de YouTube. |
 | `assets/config.js` | Link de la App Store y del atajo opcional. |
 
-Servicios externos, todos gratuitos y sin clave: la API de búsqueda de iTunes (datos y portadas), SponsorBlock (intros y finales sin música) y el reproductor de YouTube (para marcar los recortes).
+Servicios externos, gratuitos y sin clave: SponsorBlock (intros y finales sin música) y el reproductor de YouTube (para marcar los recortes).
 
 ## Publicar
 

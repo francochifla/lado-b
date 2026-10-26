@@ -1,0 +1,15 @@
+{
+  "name": "Lado B",
+  "short_name": "Lado B",
+  "description": "De YouTube a mp3 con nombre, artista, álbum y portada.",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "browser",
+  "background_color": "#f3ead9",
+  "theme_color": "#f3ead9",
+  "icons": [
+    { "src": "assets/icono-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/icono-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

@@ -296,7 +296,7 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
 
 /* ----------------------------------------------------------- vista vacía */
 
-.inicio { display: grid; gap: 28px; padding-top: 8px; }
+.inicio { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; padding-top: 8px; }
 .inicio h1 {
   font: 500 clamp(30px, 7vw, 44px)/1.05 var(--serif);
   letter-spacing: -0.02em;
@@ -420,6 +420,32 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
 }
 .mock-interruptor { flex: none; width: 46px; height: 28px; border-radius: 14px; background: #1ed760; position: relative; }
 .mock-interruptor::after { content: ""; position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; }
+
+/* -------------------------------------------------------- agregar a inicio */
+
+.agregar { display: grid; grid-template-columns: 56px 1fr; gap: 6px 14px; align-items: center; }
+.agregar img { width: 56px; height: 56px; border-radius: 13px; box-shadow: var(--sombra); grid-row: span 2; }
+.agregar b { display: block; }
+.agregar small { color: var(--tinta-2); font-size: 14px; }
+.agregar .boton { grid-column: 2; justify-self: start; }
+.agregar .boton svg.i { width: 18px; height: 18px; }
+
+.inicio-vista {
+  display: flex; justify-content: center; gap: 22px; padding: 22px 16px 18px;
+  border-radius: 18px;
+  background: linear-gradient(160deg, #2f6b61, #1d1a17 70%);
+}
+.inicio-vista > span { display: grid; justify-items: center; gap: 6px; }
+.app-ladob img { width: 64px; height: 64px; border-radius: 15px; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4); }
+.app-ladob small { color: #fff; font-size: 12px; }
+.app-falsa i:first-child { display: block; width: 64px; height: 64px; border-radius: 15px; background: rgba(255, 255, 255, 0.16); }
+.app-falsa i:last-child { display: block; width: 40px; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.16); margin-top: 4px; }
+.chip {
+  display: inline-grid; place-items: center; vertical-align: -6px;
+  width: 26px; height: 26px; border-radius: 7px;
+  background: var(--papel-2); color: #0a84ff;
+}
+.chip svg.i { width: 17px; height: 17px; }
 
 .pista { margin: 14px 0 4px; }
 .tema .editar { color: var(--tinta-3); display: grid; place-items: center; }
@@ -599,25 +625,6 @@ dialog.hoja::backdrop { background: rgba(20, 16, 12, 0.45); }
 }
 .opcion-tapa[aria-pressed="true"] .cuadro { border-color: var(--papel); outline: 2.5px solid var(--naranja); }
 .opcion-tapa[aria-pressed="true"] { color: var(--tinta); }
-
-.resultados { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.resultados button {
-  width: 100%;
-  display: grid;
-  grid-template-columns: 48px 1fr;
-  gap: 12px;
-  align-items: center;
-  padding: 8px;
-  border: 0;
-  border-radius: 10px;
-  background: none;
-  text-align: left;
-  cursor: pointer;
-}
-.resultados button:hover { background: var(--papel-2); }
-.resultados img { width: 48px; height: 48px; border-radius: 6px; }
-.resultados .t { font-weight: 500; }
-.resultados .s { font-size: 13px; color: var(--tinta-2); }
 
 /* -------------------------------------------------------------- recorte */
 

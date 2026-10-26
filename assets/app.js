@@ -1,9 +1,9 @@
 import { CONFIG } from "./config.js";
 import {
   armarTrabajo, comprimir, descomprimir, duracionFinal, esMayusculas, formatoTiempo, leerTiempo,
-  limpiarTitulo, linkAShell, portadaDesdeArchivo, temaDesdeItem, textoABase64Url, tipoTitulo, urlPortada,
+  linkAShell, portadaDesdeArchivo, temaDesdeItem, textoABase64Url, tipoTitulo, urlPortada,
 } from "./datos.js";
-import { buscarAlbumes, buscarTemas, cargarYouTube, sugerirRecorte } from "./servicios.js";
+import { cargarYouTube, sugerirRecorte } from "./servicios.js";
 
 const $ = (sel, raiz = document) => raiz.querySelector(sel);
 const $$ = (sel, raiz = document) => [...raiz.querySelectorAll(sel)];
@@ -21,7 +21,8 @@ const ICONOS = {
   flecha: '<path d="M9 6l6 6-6 6"/>',
   subir: '<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>',
   nada: '<circle cx="12" cy="12" r="8"/><path d="M6.5 17.5l11-11"/>',
-  buscar: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>',
+  compartir: '<path d="M12 3v12M8 7l4-4 4 4M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/>',
+  sumar: '<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/>',
   herramientas: '<path d="M4 6h16M4 12h10M4 18h6"/>',
   lapiz: '<path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/>',
 };
@@ -172,6 +173,12 @@ function vistaInicio() {
           </button></li>`).join("")}
       </ul>
     </div>` : ""}
+    ${enPantallaDeInicio() ? "" : `
+    <div class="tarjeta agregar">
+      <img src="assets/icono-180.png" alt="" width="56" height="56">
+      <span><b>Tenelo a mano</b><small>Sumá Lado B a tu pantalla de inicio, con su casete.</small></span>
+      <button class="boton chico" data-accion="agregar-inicio">${icono("sumar")}Agregar a inicio</button>
+    </div>`}
     <p class="nota">¿Primera vez? <button class="enlace" data-accion="tutorial">Mirá cómo funciona</button>.</p>
   </section>`;
 }
@@ -318,7 +325,6 @@ function opcionesTapa(t) {
   const alt = t.alt || {};
   const opciones = [
     { clave: "yt", texto: "Video", cover: { t: "yt", v: t.id } },
-    alt.itunes && { clave: "itunes", texto: "iTunes", cover: { t: "url", v: alt.itunes } },
     alt.subida && { clave: "subida", texto: "Tu imagen", cover: { t: "data", v: alt.subida } },
     alt.lote && { clave: "lote", texto: "Del lote", cover: alt.lote },
   ].filter(Boolean);
@@ -371,8 +377,6 @@ function abrirEditor(i) {
             </div>
           </div>
         </details>
-        <button class="boton suave" data-accion="itunes">${icono("buscar")}Completar con iTunes</button>
-        <div id="itunes"></div>
       </div>
       <div class="bloque">
         <h3 class="seccion-titulo" style="margin:0"><i class="marca-n" style="font-style:normal;margin-right:8px">4</i>Portada</h3>
@@ -523,31 +527,6 @@ function cerrarReproductor() {
   document.body.classList.remove("girando");
 }
 
-async function buscarEnItunes(t) {
-  const caja = $("#itunes", hoja);
-  const termino = `${t.artist} ${limpiarTitulo(t.title).replace(/[(\[].*?[)\]]/g, "")}`.trim();
-  caja.innerHTML = '<p class="nota"><span class="cargando"></span> Buscando…</p>';
-  try {
-    const resultados = await buscarTemas(termino);
-    if (!resultados.length) {
-      caja.innerHTML = `<p class="nota">No encontré "${esc(termino)}" en iTunes.</p>`;
-      return;
-    }
-    caja._resultados = resultados;
-    caja.innerHTML = `
-      <p class="nota">Tocá el que corresponda para completar los datos y la portada:</p>
-      <ul class="resultados">
-        ${resultados.map((r, k) => `
-          <li><button data-accion="usar-itunes" data-k="${k}">
-            <img src="${esc(r.miniatura)}" alt="" loading="lazy">
-            <span><div class="t">${esc(r.title)}</div><div class="s">${esc(r.artist)} · ${esc(r.album)}${r.year ? ` · ${r.year}` : ""}</div></span>
-          </button></li>`).join("")}
-      </ul>`;
-  } catch (e) {
-    caja.innerHTML = `<p class="nota">${esc(e.message)}. Probá de nuevo en un rato.</p>`;
-  }
-}
-
 // ------------------------------------------------------------ editar en lote
 
 function valorComun(lista, campo) {
@@ -566,7 +545,6 @@ function abrirLote() {
       ${ayuda ? `<small>${ayuda}</small>` : ""}
     </label>`;
   };
-  const sugerido = [valorComun(lista, "artist"), estado.sesion.pl].filter(Boolean).join(" ");
   abrirHoja({
     titulo: `Editar ${lista.length} ${lista.length === 1 ? "tema" : "temas"}`,
     cuerpo: `
@@ -585,16 +563,6 @@ function abrirLote() {
           <button class="opcion-tapa" data-accion="lote-tapa" data-clave="video" aria-pressed="false"><span class="cuadro">${icono("der")}</span>Cada video</button>
           <button class="opcion-tapa" data-accion="lote-subir" aria-pressed="false"><span class="cuadro" id="lote-subida">${icono("subir")}</span>Subir</button>
         </div>
-      </div>
-      <div class="bloque">
-        <h3 class="seccion-titulo" style="margin:0">Buscar el álbum en iTunes</h3>
-        <form class="pegar" data-form="lote-itunes">
-          <div class="fila">
-            <input class="entrada" name="termino" value="${esc(sugerido)}" placeholder="Artista y nombre del álbum" autocomplete="off">
-            <button class="boton suave" type="submit" aria-label="Buscar">${icono("buscar")}</button>
-          </div>
-        </form>
-        <div id="lote-itunes"></div>
       </div>`,
     pie: `<button class="boton primario" data-accion="aplicar-lote">Aplicar a ${lista.length}</button>`,
   });
@@ -630,7 +598,7 @@ function aplicarLote() {
 }
 
 function marcarTapaLote(clave) {
-  $$('[data-accion="lote-tapa"], [data-accion="lote-subir"], [data-accion="lote-album"]', hoja).forEach((b) =>
+  $$('[data-accion="lote-tapa"], [data-accion="lote-subir"]', hoja).forEach((b) =>
     b.setAttribute("aria-pressed", String(b.dataset.clave === clave || (clave === "subida" && b.dataset.accion === "lote-subir"))));
 }
 
@@ -828,6 +796,47 @@ function abrirTutorial(paso) {
   });
 }
 
+// ------------------------------------------------------- agregar a inicio
+//
+// iOS no deja que una página se agregue sola a la pantalla de inicio: solo se
+// puede explicar cómo hacerlo. El nombre y el ícono salen de las etiquetas
+// apple-mobile-web-app-title y apple-touch-icon de index.html.
+// En Android, Chrome sí ofrece instalarla con un botón (beforeinstallprompt).
+
+let instalarAndroid = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  instalarAndroid = e;
+});
+
+const enPantallaDeInicio = () =>
+  navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
+
+async function abrirAgregarInicio() {
+  if (instalarAndroid) {
+    instalarAndroid.prompt();
+    instalarAndroid = null;
+    return;
+  }
+  abrirHoja({
+    titulo: "Agregar a inicio",
+    cuerpo: `
+      <div class="inicio-vista" aria-hidden="true">
+        <span class="app-falsa"><i></i><i></i></span>
+        <span class="app-ladob"><img src="assets/icono-180.png" alt=""><small>Lado B</small></span>
+        <span class="app-falsa"><i></i><i></i></span>
+      </div>
+      <ol class="pasos pasos-inicio">
+        <li><span>En Safari, tocá <b>Compartir</b> <span class="chip">${icono("compartir")}</span>. Si no lo ves, está dentro del botón <b>···</b>.</span></li>
+        <li><span>Bajá y tocá <b>Agregar a inicio</b> <span class="chip">${icono("sumar")}</span>.</span></li>
+        <li><span>Si aparece <b>Abrir como app web</b>, dejalo <b>apagado</b>: así, cuando a-Shell mini termina, volvés al mismo lugar.</span></li>
+        <li><span>Tocá <b>Agregar</b>. El nombre <b>Lado B</b> y el casete ya vienen puestos.</span></li>
+      </ol>
+      ${esIOS() ? "" : '<p class="nota">Esto es para el iPhone. En la computadora, guardala en favoritos.</p>'}`,
+    pie: '<button class="boton primario" data-accion="cerrar">Entendido</button>',
+  });
+}
+
 function aplicarTema() {
   const t = estado.ajustes.tema;
   if (t === "auto") delete document.documentElement.dataset.tema;
@@ -973,6 +982,9 @@ document.addEventListener("click", async (e) => {
     case "tutorial":
       abrirTutorial(0);
       break;
+    case "agregar-inicio":
+      abrirAgregarInicio();
+      break;
     case "tutorial-paso":
       abrirTutorial(Number(el.dataset.paso));
       break;
@@ -984,7 +996,6 @@ document.addEventListener("click", async (e) => {
       const alt = t.alt || {};
       const opciones = {
         yt: { t: "yt", v: t.id },
-        itunes: alt.itunes && { t: "url", v: alt.itunes },
         subida: alt.subida && { t: "data", v: alt.subida },
         lote: alt.lote,
         ninguna: null,
@@ -1005,43 +1016,9 @@ document.addEventListener("click", async (e) => {
       hoja._lote.tapa = el.dataset.clave === "video" ? "video" : null;
       marcarTapaLote(el.dataset.clave);
       break;
-    case "lote-album": {
-      const r = $("#lote-itunes", hoja)._resultados[Number(el.dataset.k)];
-      const poner = (campo, valor) => valor && ($(`[data-lote="${campo}"]`, hoja).value = valor);
-      poner("album", r.album);
-      poner("albumArtist", r.albumArtist);
-      poner("year", r.year);
-      poner("genre", r.genre);
-      hoja._lote.tapa = { t: "url", v: r.portada };
-      marcarTapaLote(null);
-      el.setAttribute("aria-pressed", "true");
-      avisar("Datos del álbum cargados. Revisalos y tocá Aplicar.");
-      break;
-    }
     case "aplicar-lote":
       aplicarLote();
       break;
-    case "itunes":
-      buscarEnItunes(t);
-      break;
-    case "usar-itunes": {
-      const r = $("#itunes", hoja)._resultados[Number(el.dataset.k)];
-      // Si el tema es una versión ("(Instrumental)", "(En vivo)"), se conserva esa aclaración.
-      const aclaraciones = (t.title.match(/[(\[][^()\[\]]+[)\]]/g) || [])
-        .filter((g) => !r.title.toLowerCase().includes(g.slice(1, -1).toLowerCase()));
-      Object.assign(t, {
-        title: [r.title, ...aclaraciones].join(" "), artist: r.artist, album: r.album, albumArtist: r.albumArtist !== r.artist ? r.albumArtist : "",
-        year: r.year, genre: r.genre, track: r.track, cover: { t: "url", v: r.portada },
-      });
-      t.alt = { ...(t.alt || {}), itunes: r.portada };
-      guardar();
-      actualizarFila(estado.editando);
-      const pos = $(".hoja-cuerpo", hoja).scrollTop;
-      abrirEditor(estado.editando);
-      $(".hoja-cuerpo", hoja).scrollTop = pos;
-      avisar("Datos completados desde iTunes.");
-      break;
-    }
     case "escuchar":
       abrirReproductor(t);
       break;
@@ -1106,7 +1083,7 @@ document.addEventListener("change", (e) => {
   }
 });
 
-document.addEventListener("submit", async (e) => {
+document.addEventListener("submit", (e) => {
   const form = e.target.closest("[data-form]");
   if (!form) return;
   e.preventDefault();
@@ -1114,24 +1091,6 @@ document.addEventListener("submit", async (e) => {
     const link = form.link.value.trim();
     if (!/^https?:\/\//.test(link)) return avisar("Eso no parece un link.");
     location.href = linkAShell(estado.ajustes.app, "MP3URL:" + textoABase64Url(link));
-  }
-  if (form.dataset.form === "lote-itunes") {
-    const caja = $("#lote-itunes", hoja);
-    caja.innerHTML = '<p class="nota"><span class="cargando"></span> Buscando…</p>';
-    try {
-      const resultados = await buscarAlbumes(form.termino.value.trim());
-      caja._resultados = resultados;
-      caja.innerHTML = resultados.length ? `
-        <ul class="resultados">
-          ${resultados.map((r, k) => `
-            <li><button data-accion="lote-album" data-k="${k}">
-              <img src="${esc(r.miniatura)}" alt="" loading="lazy">
-              <span><div class="t">${esc(r.album)}</div><div class="s">${esc(r.albumArtist)}${r.year ? ` · ${r.year}` : ""} · ${r.cantidad} temas</div></span>
-            </button></li>`).join("")}
-        </ul>` : '<p class="nota">Sin resultados.</p>';
-    } catch (err) {
-      caja.innerHTML = `<p class="nota">${esc(err.message)}.</p>`;
-    }
   }
 });
 
