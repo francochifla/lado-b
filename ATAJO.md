@@ -1,4 +1,6 @@
-# Cómo armar el atajo MP3
+# Atajo MP3 (opcional)
+
+Lado B funciona sin atajo: se pega el link en la página. El atajo solo suma poder compartir directo desde la app de YouTube (Compartir → MP3). Lo que sigue explica cómo armarlo.
 
 Esto lo hace una sola persona, una sola vez. Después se comparte con un link de iCloud y el resto de la gente solo toca "Agregar atajo".
 

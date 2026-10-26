@@ -169,18 +169,28 @@ export function armarTrabajo(temas, ajustes) {
     q: ajustes.calidad,
     name: ajustes.patron,
     silence: ajustes.silencio,
-    shortcut: ajustes.atajo,
     covers,
     tracks,
   };
 }
 
-export function linkAtajo(nombre, texto) {
-  return `shortcuts://run-shortcut?name=${encodeURIComponent(nombre)}&input=text&text=${encodeURIComponent(texto)}`;
+// a-Shell ejecuta lo que viene después de "ashellmini://". El comando baja la
+// última versión de mp3.py y la corre, así que nunca queda una copia vieja.
+// Va sin punto y coma ni espacios en el código de Python para que a-Shell no
+// lo parta en dos comandos.
+export function linkAShell(app, argumento) {
+  const script = new URL("mp3.py", location.href);
+  script.search = "v=" + Date.now();
+  const cargar = `exec(__import__('urllib.request').request.urlopen('${script.href}').read())`;
+  return `${app}://${encodeURIComponent(`python -c "${cargar}" ${argumento}`)}`;
+}
+
+export function textoABase64Url(texto) {
+  return aBase64Url(new TextEncoder().encode(texto));
 }
 
 // Imagen subida por el usuario: recorte cuadrado al centro y JPEG liviano,
-// porque viaja dentro del link al atajo.
+// porque viaja dentro del link a a-Shell.
 export async function portadaDesdeArchivo(archivo, lado = 500) {
   const url = URL.createObjectURL(archivo);
   try {

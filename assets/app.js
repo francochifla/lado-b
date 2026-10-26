@@ -1,7 +1,7 @@
 import { CONFIG } from "./config.js";
 import {
   armarTrabajo, comprimir, descomprimir, duracionFinal, esMayusculas, formatoTiempo, leerTiempo,
-  limpiarTitulo, linkAtajo, portadaDesdeArchivo, temaDesdeItem, tipoTitulo, urlPortada,
+  limpiarTitulo, linkAShell, portadaDesdeArchivo, temaDesdeItem, textoABase64Url, tipoTitulo, urlPortada,
 } from "./datos.js";
 import { buscarAlbumes, buscarTemas, cargarYouTube, sugerirRecorte } from "./servicios.js";
 
@@ -52,7 +52,7 @@ const guardado = {
   },
 };
 
-const AJUSTES_BASE = { calidad: 192, patron: "{artista} - {titulo}", silencio: false, atajo: CONFIG.atajoNombre, tema: "auto" };
+const AJUSTES_BASE = { calidad: 192, patron: "{artista} - {titulo}", silencio: false, app: "ashellmini", tema: "auto" };
 
 const estado = {
   sesion: null,
@@ -153,13 +153,13 @@ function vistaInicio() {
           <button class="boton suave" type="button" data-accion="pegar">Pegar</button>
         </div>
       </label>
-      <button class="boton primario ancho" type="submit">Abrir con el atajo</button>
-      <p class="nota">También podés compartir directo desde la app de YouTube: <b>Compartir</b> → <b>${esc(estado.ajustes.atajo)}</b>.</p>
+      <button class="boton primario ancho" type="submit">Leer link</button>
+      <p class="nota">En YouTube: <b>Compartir</b> → <b>Copiar enlace</b>, y pegalo acá. Safari va a preguntar si abrir a-Shell mini: tocá <b>Abrir</b>.</p>
     </form>
     <ol class="pasos tarjeta" aria-label="Cómo funciona">
-      <li><span><b>Compartí el link</b> con el atajo. Lee la lista de temas en tu teléfono.</span></li>
+      <li><span><b>Pegá el link</b> de un video o una playlist.</span></li>
       <li><span><b>Editá</b> título, artista, álbum y portada. Recortá intros si hace falta.</span></li>
-      <li><span><b>Descargá</b>. Los mp3 quedan en la carpeta que elegiste, lista para Spotify.</span></li>
+      <li><span><b>Descargá</b>. Los mp3 quedan en tu carpeta, listos para Spotify.</span></li>
     </ol>
     ${recientes.length ? `
     <div class="tarjeta">
@@ -172,7 +172,7 @@ function vistaInicio() {
           </button></li>`).join("")}
       </ul>
     </div>` : ""}
-    <p class="nota">¿Primera vez? <a class="enlace" href="instalar.html">Instalación en 2 minutos</a>.</p>
+    <p class="nota">¿Primera vez? <button class="enlace" data-accion="tutorial">Mirá cómo funciona</button>.</p>
   </section>`;
 }
 
@@ -744,12 +744,87 @@ function abrirAjustes() {
         <div class="campo"><span>Apariencia</span>
           <div class="segmentos" data-ajuste="tema">${[["auto", "Auto"], ["claro", "Claro"], ["oscuro", "Oscuro"]].map(([v, t]) => opcion("tema", v, t, a.tema)).join("")}</div>
         </div>
-        <label class="campo"><span>Nombre del atajo</span>
-          <input class="entrada" data-ajuste="atajo" value="${esc(a.atajo)}" autocomplete="off" autocapitalize="off">
-          <small>Tiene que coincidir con el nombre del atajo en tu iPhone.</small>
-        </label>
-        <p class="nota">¿Cambiar la carpeta donde se guardan? Está explicado en <a class="enlace" href="instalar.html#carpeta">Instalación</a>.</p>
+      </div>
+      <div class="bloque">
+        <div class="campo"><span>Carpeta de destino</span>
+          <small>Donde se guardan los mp3. Para Spotify: <b>En mi iPhone → Spotify</b>.</small>
+        </div>
+        <a class="boton suave" href="${esc(linkAShell(a.app, "MP3CARPETA"))}">Cambiar carpeta</a>
+        <div class="campo"><span>App que descarga</span>
+          <div class="segmentos" data-ajuste="app">${[["ashellmini", "a-Shell mini"], ["ashell", "a-Shell"]].map(([v, t]) => opcion("app", v, t, a.app)).join("")}</div>
+          <small>Si tenés instalada la versión completa de a-Shell, podés usar esa.</small>
+        </div>
       </div>`,
+  });
+}
+
+// ----------------------------------------------------------------- tutorial
+
+const esIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+const PASOS_TUTORIAL = [
+  {
+    titulo: "Bienvenido a Lado B",
+    texto: "Pasá videos y playlists de YouTube a mp3 con nombre, artista, álbum y portada. Gratis, sin cuentas y directo a tu iPhone.",
+    visual: () => casete("Tu música, en casete", "Bienvenida"),
+  },
+  {
+    titulo: "Instalá a-Shell mini",
+    texto: "Es una app gratuita que hace la descarga dentro de tu teléfono. Solo hay que instalarla: no vas a tener que aprender a usarla.",
+    visual: () => `
+      <div class="mock mock-app">
+        <span class="mock-icono">&gt;_</span>
+        <span><b>a-Shell mini</b><small>Gratis · App Store</small></span>
+      </div>`,
+    extra: () => `<a class="boton suave ancho" href="${esc(CONFIG.appStoreAShell)}" target="_blank" rel="noopener">Abrir en la App Store</a>`,
+  },
+  {
+    titulo: "Pegá un link",
+    texto: "En YouTube tocá Compartir → Copiar enlace y pegalo en Lado B. Safari te va a preguntar esto: tocá Abrir. La primera vez tarda uno o dos minutos en prepararse.",
+    visual: () => `
+      <div class="mock mock-alerta">
+        <p>¿Abrir esta página en "a-Shell mini"?</p>
+        <div><span>Cancelar</span><span class="si">Abrir</span></div>
+      </div>`,
+  },
+  {
+    titulo: "Editá y descargá",
+    texto: "Tocá cada tema para cambiarle los datos. Al descargar por primera vez se abre una ventana para elegir la carpeta: elegí esta y tocá Abrir. Al terminar volvés solo a Lado B.",
+    visual: () => `
+      <div class="mock mock-ruta">
+        <span>En mi iPhone</span><span class="flecha">›</span><span class="si">Spotify</span>
+      </div>`,
+  },
+  {
+    titulo: "Escuchalo en Spotify",
+    texto: "En Spotify: tu foto → Configuración y privacidad → Archivos locales, y activá esta opción. Tus temas aparecen en Tu biblioteca → Archivos locales.",
+    visual: () => `
+      <div class="mock mock-ajuste">
+        <span>Mostrar archivos de audio de este dispositivo</span><i class="mock-interruptor"></i>
+      </div>`,
+  },
+];
+
+function abrirTutorial(paso) {
+  guardado.escribir("tutorial", true);
+  const p = PASOS_TUTORIAL[paso];
+  const ultimo = paso === PASOS_TUTORIAL.length - 1;
+  abrirHoja({
+    titulo: "Cómo funciona",
+    cabeza: `<span class="pos">${paso + 1}/${PASOS_TUTORIAL.length}</span>`,
+    cuerpo: `
+      <div class="tutorial">
+        <div class="tutorial-visual">${p.visual()}</div>
+        <h3>${p.titulo}</h3>
+        <p>${p.texto}</p>
+        ${p.extra ? p.extra() : ""}
+        <div class="puntos" aria-hidden="true">${PASOS_TUTORIAL.map((_, k) => `<i class="${k === paso ? "activo" : ""}"></i>`).join("")}</div>
+      </div>`,
+    pie: `
+      ${paso > 0 ? `<button class="boton suave" data-accion="tutorial-paso" data-paso="${paso - 1}">Atrás</button>` : ""}
+      ${ultimo
+        ? '<button class="boton primario" data-accion="tutorial-fin">Empezar</button>'
+        : `<button class="boton primario" data-accion="tutorial-paso" data-paso="${paso + 1}">Siguiente</button>`}`,
   });
 }
 
@@ -765,21 +840,21 @@ async function abrirDescarga(lista) {
   const faltan = lista.filter((t) => !t.title.trim() || !t.artist.trim()).length;
   const segundos = lista.reduce((a, t) => a + duracionFinal(t), 0);
   const trabajo = armarTrabajo(lista, estado.ajustes);
-  const texto = "MP3JOB:" + (await comprimir(trabajo));
-  const link = linkAtajo(estado.ajustes.atajo, texto);
-  const esIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const link = linkAShell(estado.ajustes.app, "MP3JOB:" + (await comprimir(trabajo)));
+  const primeraVez = !guardado.leer("descargo");
   abrirHoja({
     titulo: `Descargar ${lista.length === 1 ? "1 tema" : lista.length + " temas"}`,
     cuerpo: `
       ${faltan ? `<div class="aviso"><span>${faltan === 1 ? "Un tema no tiene" : `${faltan} temas no tienen`} título o artista. Se puede descargar igual.</span></div>` : ""}
       <ol class="pasos">
-        <li><span><b>Se abre Atajos</b> y después a-Shell mini. Si pregunta, tocá Permitir.</span></li>
-        <li><span><b>No bloquees la pantalla</b> mientras descarga: ${formatoTiempo(segundos)} de música, a ${estado.ajustes.calidad} kbps.</span></li>
-        <li><span><b>Al terminar</b>, los mp3 se guardan solos en tu carpeta (Spotify, si no la cambiaste).</span></li>
+        <li><span>Safari pregunta si abrir a-Shell mini: tocá <b>Abrir</b>.</span></li>
+        ${primeraVez ? "<li><span><b>Solo esta vez</b>, elegí dónde guardar: <b>En mi iPhone → Spotify</b> y tocá Abrir.</span></li>" : ""}
+        <li><span><b>No bloquees la pantalla</b> mientras graba: ${formatoTiempo(segundos)} de música.</span></li>
+        <li><span><b>Al terminar volvés acá</b> con el aviso de que está todo listo.</span></li>
       </ol>
-      ${esIOS ? "" : '<p class="nota">Esto funciona en el iPhone con el atajo instalado. Desde la computadora no va a pasar nada.</p>'}
+      ${esIOS() ? "" : '<p class="nota">Esto funciona en el iPhone con a-Shell mini instalado. Desde la computadora no va a pasar nada.</p>'}
       ${link.length > 400000 ? '<p class="nota">Son muchos datos para un solo envío. Si falla, descargá en partes más chicas.</p>' : ""}`,
-    pie: `<a class="boton primario" href="${esc(link)}" data-accion="ir-atajo">Abrir Atajos</a>`,
+    pie: `<a class="boton primario" href="${esc(link)}" data-accion="ir-ashell">Descargar</a>`,
   });
 }
 
@@ -890,9 +965,20 @@ document.addEventListener("click", async (e) => {
     case "descargar-uno":
       abrirDescarga([t]);
       break;
-    case "ir-atajo":
+    case "ir-ashell":
       // Se deja seguir el link; la hoja se cierra para cuando vuelvas.
+      guardado.escribir("descargo", true);
       setTimeout(cerrarHoja, 600);
+      break;
+    case "tutorial":
+      abrirTutorial(0);
+      break;
+    case "tutorial-paso":
+      abrirTutorial(Number(el.dataset.paso));
+      break;
+    case "tutorial-fin":
+      guardado.escribir("tutorial", true);
+      cerrarHoja();
       break;
     case "tapa": {
       const alt = t.alt || {};
@@ -1012,10 +1098,10 @@ document.addEventListener("change", (e) => {
     const clave = ajuste.dataset.ajuste;
     let valor = el.type === "checkbox" ? el.checked : el.value;
     if (clave === "calidad") valor = Number(valor);
-    if (clave === "atajo") valor = valor.trim() || CONFIG.atajoNombre;
     estado.ajustes[clave] = valor;
     guardado.escribir("ajustes", estado.ajustes);
     if (clave === "tema") aplicarTema();
+    if (clave === "app") abrirAjustes();
     if (estado.sesion) actualizarSeleccion();
   }
 });
@@ -1027,7 +1113,7 @@ document.addEventListener("submit", async (e) => {
   if (form.dataset.form === "link") {
     const link = form.link.value.trim();
     if (!/^https?:\/\//.test(link)) return avisar("Eso no parece un link.");
-    location.href = linkAtajo(estado.ajustes.atajo, link);
+    location.href = linkAShell(estado.ajustes.app, "MP3URL:" + textoABase64Url(link));
   }
   if (form.dataset.form === "lote-itunes") {
     const caja = $("#lote-itunes", hoja);
@@ -1063,7 +1149,8 @@ async function cargarDesdeLink(codigo) {
 }
 
 // Vuelta desde a-Shell mini: marca los temas guardados y cuenta qué pasó.
-function mostrarResultado({ ok = [], err = [] }) {
+function mostrarResultado({ ok = [], err = [], dest = "" }) {
+  const respaldo = dest.startsWith("a-Shell");
   const porId = new Map(temas().map((t) => [t.id, t]));
   for (const id of ok) {
     const t = porId.get(id);
@@ -1085,7 +1172,10 @@ function mostrarResultado({ ok = [], err = [] }) {
       ${ok.length ? `
       <div class="exito">
         ${casete(`${ok.length} ${ok.length === 1 ? "tema guardado" : "temas guardados"}`, "Grabado")}
-        <p>Ya ${ok.length === 1 ? "está" : "están"} en tu carpeta. En Spotify: <b>Tu biblioteca → Archivos locales</b>.</p>
+        ${respaldo ? `
+        <p>Quedaron en <b>Archivos → En mi iPhone → a-Shell mini → Lado B</b>, porque no se eligió otra carpeta.</p>
+        <a class="boton suave" href="${esc(linkAShell(estado.ajustes.app, "MP3CARPETA"))}">Elegir la carpeta de Spotify</a>` : `
+        <p>Ya ${ok.length === 1 ? "está" : "están"} en ${dest ? `<b>${esc(dest)}</b>` : "tu carpeta"}. En Spotify: <b>Tu biblioteca → Archivos locales</b>.</p>`}
       </div>` : ""}
       ${err.length ? `
       <div class="bloque">
@@ -1127,6 +1217,10 @@ async function arrancar() {
       avisar("Descarga terminada.");
     }
   }
+  if (clave === "carpeta") {
+    avisar(`Listo: ahora se guarda en ${decodeURIComponent(valor)}.`, 4000);
+  }
+  if (!clave && !guardado.leer("tutorial")) abrirTutorial(0);
   if (clave === "error") {
     abrirHoja({
       titulo: "Algo no salió",
@@ -1137,7 +1231,7 @@ async function arrancar() {
 }
 
 window.addEventListener("hashchange", () => {
-  if (/^#(d|listo|error)=/.test(location.hash)) arrancar();
+  if (/^#(d|listo|error|carpeta)=/.test(location.hash)) arrancar();
 });
 
 arrancar();

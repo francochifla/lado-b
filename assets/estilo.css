@@ -380,6 +380,47 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
 .barra .boton svg.i { width: 18px; height: 18px; }
 
 .temas { list-style: none; margin: 0; padding: 0; }
+/* --------------------------------------------------------------- tutorial */
+
+.tutorial { display: grid; gap: 14px; text-align: center; justify-items: center; }
+.tutorial h3 { font: 600 24px/1.15 var(--serif); margin: 6px 0 0; }
+.tutorial p { margin: 0; color: var(--tinta-2); max-width: 40ch; }
+.tutorial-visual { width: 100%; min-height: 150px; display: grid; place-items: center; }
+.tutorial-visual .casete { max-width: 280px; }
+.puntos { display: flex; gap: 6px; margin-top: 4px; }
+.puntos i { width: 7px; height: 7px; border-radius: 50%; background: var(--linea); }
+.puntos i.activo { background: var(--naranja); width: 20px; border-radius: 4px; }
+
+.mock { width: 100%; max-width: 300px; border-radius: 16px; font-family: var(--sans); box-shadow: var(--sombra); }
+.mock .si { color: #0a84ff; font-weight: 600; }
+.mock-app {
+  display: flex; align-items: center; gap: 14px; padding: 16px;
+  background: var(--carton); border: 1.5px solid var(--linea); text-align: left;
+}
+.mock-app b { display: block; }
+.mock-app small { color: var(--tinta-2); }
+.mock-icono {
+  width: 60px; height: 60px; border-radius: 14px; flex: none;
+  display: grid; place-items: center;
+  background: #1c1c1e; color: #f5c542; font: 600 20px var(--mono);
+}
+.mock-alerta { background: rgba(242, 242, 247, 0.96); color: #1c1c1e; overflow: hidden; }
+.mock-alerta p { margin: 0; padding: 18px 16px; font-size: 15px; font-weight: 600; color: #1c1c1e; }
+.mock-alerta div { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid #c6c6c8; }
+.mock-alerta span { padding: 12px; color: #0a84ff; }
+.mock-alerta span + span { border-left: 1px solid #c6c6c8; }
+.mock-ruta {
+  display: flex; align-items: center; justify-content: center; gap: 10px; padding: 18px;
+  background: var(--carton); border: 1.5px solid var(--linea); font-size: 17px;
+}
+.mock-ruta .flecha { color: var(--tinta-3); }
+.mock-ajuste {
+  display: flex; align-items: center; gap: 14px; padding: 16px; text-align: left;
+  background: #181818; color: #fff; font-size: 15px;
+}
+.mock-interruptor { flex: none; width: 46px; height: 28px; border-radius: 14px; background: #1ed760; position: relative; }
+.mock-interruptor::after { content: ""; position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; }
+
 .pista { margin: 14px 0 4px; }
 .tema .editar { color: var(--tinta-3); display: grid; place-items: center; }
 .tema .editar svg.i { width: 18px; height: 18px; }

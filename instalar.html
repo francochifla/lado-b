@@ -30,23 +30,13 @@
         <span class="num">1</span>
         <div>
           <h2>Instalá a-Shell mini</h2>
-          <p>Es la app que hace la descarga dentro de tu teléfono. Es gratis, ocupa unos 300 MB y no vas a tener que usarla: trabaja sola cuando la llama el atajo.</p>
+          <p>Es la app que hace la descarga dentro de tu teléfono. Es gratis, ocupa unos 300 MB y no vas a tener que usarla: Lado B la abre sola cuando hace falta.</p>
           <a class="boton suave" id="app-store" href="#">Abrir en la App Store</a>
         </div>
       </section>
 
       <section class="paso">
         <span class="num">2</span>
-        <div>
-          <h2>Agregá el atajo</h2>
-          <p>Tocá el botón y después <b>Agregar atajo</b>. Si te pregunta dónde guardar la música, elegí <b>En mi iPhone → Spotify</b>.</p>
-          <a class="boton primario" id="atajo" href="#">Agregar el atajo</a>
-          <p class="nota oculto" id="sin-atajo">El link del atajo todavía no está publicado.</p>
-        </div>
-      </section>
-
-      <section class="paso">
-        <span class="num">3</span>
         <div>
           <h2>Activá los archivos locales en Spotify</h2>
           <p>En Spotify: tocá tu foto → <b>Configuración y privacidad</b> → <b>Archivos locales</b> → activá <b>Mostrar archivos de audio de este dispositivo</b>. El nombre exacto puede cambiar un poco según la versión.</p>
@@ -55,14 +45,16 @@
       </section>
 
       <section class="paso">
-        <span class="num">4</span>
+        <span class="num">3</span>
         <div>
           <h2>Probalo</h2>
-          <p>En la app de YouTube, abrí un video o una playlist y tocá <b>Compartir</b> → <b>Más</b> → <b>MP3</b>.</p>
-          <p>La primera vez tarda uno o dos minutos porque instala lo que necesita, y Atajos puede pedirte permisos: tocá <b>Permitir</b>. Después se abre esta web con la lista para editar.</p>
+          <p>En YouTube tocá <b>Compartir</b> → <b>Copiar enlace</b>, pegalo en <a class="enlace" href="./">Lado B</a> y tocá <b>Leer link</b>. Safari pregunta si abrir a-Shell mini: tocá <b>Abrir</b>.</p>
+          <p>La primera vez tarda uno o dos minutos porque instala lo que necesita, y en la primera descarga te pide elegir la carpeta: <b>En mi iPhone → Spotify</b>.</p>
         </div>
       </section>
     </div>
+
+    <p class="nota">Tip: en Safari, con Lado B abierto, tocá <b>Compartir → Agregar a inicio</b>. Queda como una app en tu pantalla de inicio.</p>
 
     <section class="tarjeta">
       <h2>Qué significa cada dato</h2>
@@ -83,12 +75,17 @@
 
       <details id="carpeta">
         <summary>¿Cómo cambio la carpeta donde se guardan?</summary>
-        <p>Abrí <b>Atajos</b>, mantené apretado <b>MP3</b> → <b>Editar</b>. En la acción <b>Guardar archivo</b>, tocá la carpeta y elegí otra. Si preferís elegir cada vez, activá <b>Preguntar dónde guardar</b>.</p>
+        <p>En Lado B, tocá el botón de <b>Ajustes</b> (arriba a la derecha) → <b>Cambiar carpeta</b>, y elegí otra.</p>
       </details>
 
       <details>
-        <summary>No me aparece MP3 al compartir</summary>
-        <p>En la hoja de compartir, deslizá la fila de abajo hasta el final, tocá <b>Editar acciones</b> y activá <b>MP3</b>. También podés copiar el link y pegarlo en la página principal.</p>
+        <summary>Safari no abre a-Shell mini</summary>
+        <p>Revisá que esté instalada la versión <b>a-Shell mini</b>. Si tenés la versión completa (a-Shell), elegila en <b>Ajustes → App que descarga</b>.</p>
+      </details>
+
+      <details>
+        <summary>No encuentro los temas</summary>
+        <p>Si en la primera descarga no se eligió ninguna carpeta, quedan en <b>Archivos → En mi iPhone → a-Shell mini → Lado B</b>. Para que vayan a Spotify, elegí la carpeta desde <b>Ajustes → Cambiar carpeta</b>.</p>
       </details>
 
       <details>
@@ -121,12 +118,6 @@
   <script type="module">
     import { CONFIG } from "./assets/config.js";
     document.getElementById("app-store").href = CONFIG.appStoreAShell;
-    const atajo = document.getElementById("atajo");
-    if (CONFIG.atajoICloud) atajo.href = CONFIG.atajoICloud;
-    else {
-      atajo.classList.add("oculto");
-      document.getElementById("sin-atajo").classList.remove("oculto");
-    }
     try {
       const tema = JSON.parse(localStorage.getItem("ladob:ajustes") || "{}").tema;
       if (tema && tema !== "auto") document.documentElement.dataset.tema = tema;
