@@ -99,9 +99,12 @@ export function leerTiempo(texto) {
   return partes.reduce((total, p) => total * 60 + p, 0);
 }
 
+// null si no se sabe: los videos leídos desde la página no traen duración
+// hasta que se abre el reproductor.
 export function duracionFinal(t) {
   const fin = t.end ?? t.dur;
-  return Math.max(0, (fin || 0) - (t.start || 0));
+  if (!fin) return null;
+  return Math.max(0, fin - (t.start || 0));
 }
 
 // -------------------------------------------------------------- compresión
@@ -155,7 +158,8 @@ export function armarTrabajo(temas, ajustes) {
       if (valor) tema[campo] = valor;
     }
     if (t.start) tema.start = t.start;
-    if (t.end && t.end < t.dur) tema.end = t.end;
+    // Los videos leídos desde la página no traen duración (dur = 0).
+    if (t.end && (!t.dur || t.end < t.dur)) tema.end = t.end;
     return tema;
   });
 
@@ -169,6 +173,7 @@ export function armarTrabajo(temas, ajustes) {
     q: ajustes.calidad,
     name: ajustes.patron,
     silence: ajustes.silencio,
+    dest: ajustes.destino || "spotify",
     covers,
     tracks,
   };
@@ -189,6 +194,21 @@ export function linkAShell(app, argumento) {
 export function linkDeYouTube(texto) {
   const m = (texto || "").match(/https?:\/\/(?:[\w-]+\.)*(?:youtube\.com|youtu\.be|youtube-nocookie\.com)\/\S*/i);
   return m ? m[0] : null;
+}
+
+// De qué es un link: el video (si hay) y la playlist (si hay).
+// youtube.com/watch?v=…, youtu.be/…, /shorts/…, /live/…, music.youtube.com, /playlist?list=…
+export function analizarLink(link) {
+  try {
+    const url = new URL(link);
+    const lista = url.searchParams.get("list");
+    let id = url.searchParams.get("v");
+    if (!id && url.hostname.endsWith("youtu.be")) id = url.pathname.slice(1).split("/")[0];
+    if (!id) id = url.pathname.match(/^\/(?:shorts|live|embed)\/([\w-]{11})/)?.[1] || null;
+    return { id: /^[\w-]{11}$/.test(id || "") ? id : null, lista };
+  } catch {
+    return { id: null, lista: null };
+  }
 }
 
 export function textoABase64Url(texto) {

@@ -460,6 +460,16 @@ details.recorte[open] > summary { margin-bottom: 14px; }
 }
 .version .enlace { font: inherit; color: var(--tinta-2); }
 
+.opciones-destino { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 340px; }
+.opcion-destino {
+  display: grid; gap: 4px; padding: 16px 12px; text-align: center;
+  border-radius: 14px; border: 2px solid var(--linea); background: var(--carton); cursor: pointer;
+}
+.opcion-destino b { font: 600 18px var(--serif); }
+.opcion-destino small { color: var(--tinta-2); font-size: 13px; }
+.opcion-destino[aria-pressed="true"] { border-color: var(--naranja); box-shadow: 0 0 0 3px color-mix(in srgb, var(--naranja) 18%, transparent); }
+.listo-preparado { color: var(--verde) !important; font-weight: 600; }
+
 .pista { margin: 14px 0 4px; }
 .tema .editar { color: var(--tinta-3); display: grid; place-items: center; }
 .tema .editar svg.i { width: 18px; height: 18px; }

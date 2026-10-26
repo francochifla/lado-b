@@ -8,7 +8,9 @@
 #                             a la web para editarlos.
 #   MP3JOB:<trabajo>          descarga, recorta, convierte a mp3, escribe los
 #                             tags y guarda en la carpeta elegida.
-#   MP3CARPETA                vuelve a elegir la carpeta donde se guarda.
+#   MP3PREPARAR:<destino>     primera vez: instala lo necesario y pide la
+#                             carpeta ("spotify" o "descargas").
+#   MP3CARPETA:<destino>      vuelve a elegir la carpeta donde se guarda.
 #
 # También acepta lo que manda el atajo MP3 (opcional, para compartir desde
 # YouTube): el mismo texto, pero codificado en base64.
@@ -29,7 +31,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.3.3"
+VERSION = "0.4.0"
 WEB_URL = "https://francochifla.github.io/lado-b/"
 
 # Prueba en computadora: MP3_LOCAL=1 imprime los links en vez de abrirlos,
@@ -248,16 +250,26 @@ def puede_escribir(carpeta):
         return False
 
 
-def elegir_carpeta():
+# Lo que la persona eligió en la web, con el nombre de la carpeta en el
+# selector de iOS en español y en inglés.
+RUTAS = {
+    "spotify": ("En mi iPhone → Spotify", "On My iPhone → Spotify"),
+    "descargas": ("En mi iPhone → Descargas", "On My iPhone → Downloads"),
+}
+
+
+def elegir_carpeta(destino="spotify"):
     """Abre el selector de carpetas de iOS. Devuelve la carpeta o None."""
     if LOCAL:
         return None
+    ruta, en_ingles = RUTAS.get(destino, RUTAS["spotify"])
     casete("¿Dónde guardo la música?", [
-        "Elegí la carpeta en la ventana",
-        "que se abre ahora:",
+        "En la ventana que se abre, elegí",
         "",
-        f"{CREMA}En mi iPhone → Spotify{GRIS}",
-        "y tocá Abrir.",
+        f"{CREMA}{ruta}{GRIS}",
+        f"({en_ingles})",
+        "",
+        "y tocá Abrir. Es solo esta vez.",
     ])
     time.sleep(1.5)
     antes = os.getcwd()
@@ -282,11 +294,11 @@ def entrar_a_carpeta(carpeta):
     return ok
 
 
-def carpeta_destino():
+def carpeta_destino(destino="spotify"):
     """La carpeta donde guardar y su nombre para mostrar en la web."""
     carpeta = leer_config().get("carpeta")
     if not (carpeta and entrar_a_carpeta(carpeta)):
-        carpeta = elegir_carpeta()
+        carpeta = elegir_carpeta(destino)
     if carpeta:
         return carpeta, nombre_carpeta(carpeta)
     os.makedirs(RESPALDO, exist_ok=True)
@@ -299,6 +311,8 @@ def nombre_carpeta(carpeta):
     if "spotify" in carpeta.lower():
         return "Spotify"
     partes = [p for p in carpeta.split(os.sep) if p]
+    if partes and partes[-1] in ("Downloads", "Descargas"):
+        return "Descargas"
     if partes and partes[-1] == "Documents" and len(partes) > 1:
         return partes[-2]
     return partes[-1] if partes else carpeta
@@ -473,7 +487,7 @@ def procesar(trabajo):
         shutil.rmtree(SALIDA, ignore_errors=True)
         os.makedirs(SALIDA)
     else:
-        destino, nombre_destino = carpeta_destino()
+        destino, nombre_destino = carpeta_destino(trabajo.get("dest") or "spotify")
 
     shutil.rmtree(TMP, ignore_errors=True)
     os.makedirs(TMP)
@@ -565,19 +579,22 @@ def procesar(trabajo):
         abrir(volver)
 
 
-def cambiar_carpeta():
-    carpeta = elegir_carpeta()
+def cambiar_carpeta(destino, clave="carpeta"):
+    """Elige la carpeta y vuelve a la web. Se usa al preparar todo la primera
+    vez (#preparado) y desde Ajustes (#carpeta)."""
+    carpeta = elegir_carpeta(destino)
     if carpeta:
-        abrir(WEB_URL + "#carpeta=" + urllib.parse.quote(nombre_carpeta(carpeta), safe=""))
+        abrir(WEB_URL + f"#{clave}=" + urllib.parse.quote(nombre_carpeta(carpeta), safe=""))
     else:
-        volver_con_error("No se eligió ninguna carpeta. Los temas se van a guardar en a-Shell mini → Lado B.")
+        volver_con_error("No se eligió ninguna carpeta. Los temas se van a guardar en a-Shell mini → Lado B "
+                         "hasta que elijas otra en Ajustes.")
 
 
 # ----------------------------------------------------------------- inicio
 
 def leer_entrada(crudo):
     """Lo que llega desde la web viene en claro; lo del atajo, en base64."""
-    if crudo.startswith(("MP3JOB:", "MP3URL:", "MP3CARPETA", "http")):
+    if crudo.startswith(("MP3JOB:", "MP3URL:", "MP3CARPETA", "MP3PREPARAR", "http")):
         return crudo
     try:
         return base64.b64decode(crudo + "=" * (-len(crudo) % 4)).decode("utf-8")
@@ -600,8 +617,11 @@ def main():
         preparar()
         if texto.startswith("MP3JOB:"):
             procesar(descomprimir(texto[len("MP3JOB:"):]))
-        elif texto.startswith("MP3CARPETA"):
-            cambiar_carpeta()
+        elif texto.startswith(("MP3CARPETA", "MP3PREPARAR")):
+            # "MP3PREPARAR:spotify": primera vez, ya con las herramientas
+            # instaladas por preparar(); "MP3CARPETA:descargas": desde Ajustes.
+            orden, _, destino = texto.partition(":")
+            cambiar_carpeta(destino or "spotify", "preparado" if orden == "MP3PREPARAR" else "carpeta")
         else:
             if texto.startswith("MP3URL:"):
                 texto = desde_base64url(texto[len("MP3URL:"):]).decode("utf-8")

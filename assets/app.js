@@ -1,9 +1,9 @@
 import { CONFIG } from "./config.js";
 import {
   armarTrabajo, comprimir, descomprimir, duracionFinal, esMayusculas, formatoTiempo, leerTiempo,
-  linkAShell, linkDeYouTube, portadaDesdeArchivo, temaDesdeItem, textoABase64Url, tipoTitulo, urlPortada,
+  analizarLink, linkAShell, linkDeYouTube, portadaDesdeArchivo, temaDesdeItem, textoABase64Url, tipoTitulo, urlPortada,
 } from "./datos.js";
-import { cargarYouTube, sugerirRecorte } from "./servicios.js";
+import { cargarYouTube, datosDeVideo, sugerirRecorte } from "./servicios.js";
 
 const $ = (sel, raiz = document) => raiz.querySelector(sel);
 const $$ = (sel, raiz = document) => [...raiz.querySelectorAll(sel)];
@@ -53,7 +53,7 @@ const guardado = {
   },
 };
 
-const AJUSTES_BASE = { calidad: 192, patron: "{artista} - {titulo}", silencio: false, app: "ashellmini", tema: "auto" };
+const AJUSTES_BASE = { calidad: 192, patron: "{artista} - {titulo}", silencio: false, app: "ashellmini", tema: "auto", destino: null };
 
 const estado = {
   sesion: null,
@@ -192,11 +192,16 @@ function vistaLista() {
   const focoActivo = s.foco && lista.filter((t) => t.sel).length === 1 && lista.length > 1;
   return `
   <section class="resumen">
-    ${casete(tituloSesion(), `${lista.length} ${lista.length === 1 ? "tema" : "temas"} · ${formatoTiempo(total)}`)}
+    ${casete(tituloSesion(), [`${lista.length} ${lista.length === 1 ? "tema" : "temas"}`, total && formatoTiempo(total)].filter(Boolean).join(" · "))}
     ${focoActivo ? `
     <div class="aviso">
       <span>El link era de un tema dentro de una playlist. Quedó elegido solo ese.</span>
       <button class="boton chico" data-accion="todos">Elegir los ${lista.length}</button>
+    </div>` : ""}
+    ${s.lista && lista.length === 1 ? `
+    <div class="aviso">
+      <span>Este tema es parte de una playlist.</span>
+      <a class="boton chico" href="${esc(linkAShell(estado.ajustes.app, "MP3URL:" + textoABase64Url(s.src)))}">Traer la playlist</a>
     </div>` : ""}
     <form class="pegar otro-link" data-form="link">
       <label class="sr" for="otro-link">Otro link de YouTube</label>
@@ -223,7 +228,7 @@ function vistaLista() {
 function filaTema(t) {
   const sub = [t.artist || '<span class="falta">Sin artista</span>', t.album && esc(t.album)].filter(Boolean);
   if (t.artist) sub[0] = esc(t.artist);
-  const recortado = t.start || (t.end && t.end < t.dur);
+  const recortado = t.start || (t.end && (!t.dur || t.end < t.dur));
   return `
     <input type="checkbox" class="casilla" data-accion="elegir" ${t.sel ? "checked" : ""} aria-label="Elegir ${esc(t.title)}">
     ${t.cover ? `<img class="tapa" src="${esc(urlPortada(t.cover, true))}" alt="" loading="lazy">` : '<div class="tapa"></div>'}
@@ -258,11 +263,12 @@ function actualizarSeleccion() {
   if (cuenta) cuenta.textContent = `${n} de ${lista.length}`;
   $$(".tema").forEach((fila) => fila.classList.toggle("apagado", !lista[fila.dataset.i]?.sel));
 
-  const segundos = elegidos().reduce((a, t) => a + duracionFinal(t), 0);
+  const segundos = elegidos().reduce((a, t) => a + (duracionFinal(t) || 0), 0);
+  const sinDuracion = elegidos().some((t) => duracionFinal(t) == null);
   const mb = (segundos * estado.ajustes.calidad * 1000) / 8 / 1e6;
   pie.innerHTML = `
     <div class="adentro">
-      <span class="peso">${n} ${n === 1 ? "tema" : "temas"}<br>${formatoTiempo(segundos)} · ≈ ${mb < 10 ? mb.toFixed(1) : Math.round(mb)} MB</span>
+      <span class="peso">${n} ${n === 1 ? "tema" : "temas"}<br>${sinDuracion ? "unos 5 MB por tema" : `${formatoTiempo(segundos)} · ≈ ${mb < 10 ? mb.toFixed(1) : Math.round(mb)} MB`}</span>
       <button class="boton primario" data-accion="descargar" ${n ? "" : "disabled"}>Descargar ${n === lista.length && n > 1 ? "todo" : n === 1 ? "1 tema" : n + " temas"}</button>
     </div>`;
 }
@@ -410,14 +416,14 @@ function abrirEditor(i) {
           </div>
           <div class="tiempo">
             <label class="campo"><span>Termina en</span>
-              <input class="entrada mono" data-tiempo="end" value="${esc(formatoTiempo(t.end ?? t.dur))}" inputmode="decimal" placeholder="${esc(formatoTiempo(t.dur))}"></label>
+              <input class="entrada mono" data-tiempo="end" value="${esc(formatoTiempo(t.end ?? (t.dur || null)))}" inputmode="decimal" placeholder="${esc(formatoTiempo(t.dur) || "Hasta el final")}"></label>
             <div class="acciones">
               <button class="boton chico suave" data-accion="marcar" data-cual="end">Marcar</button>
               <button class="boton chico suave" data-accion="ir" data-cual="end">Ir</button>
             </div>
           </div>
         </div>
-        <p class="nota">Duración final: <b class="mono" id="duracion">${formatoTiempo(duracionFinal(t))}</b>
+        <p class="nota">Duración final: <b class="mono" id="duracion">${formatoTiempo(duracionFinal(t)) || "completa"}</b>
           · <button class="enlace" data-accion="sin-recorte">Quitar recorte</button></p>
         </div>
       </details>
@@ -458,7 +464,7 @@ function pintarCorte() {
   const hasta = ((t.end ?? t.dur) / t.dur) * 100;
   barra.style.left = desde + "%";
   barra.style.width = Math.max(0, hasta - desde) + "%";
-  $("#duracion", hoja).textContent = formatoTiempo(duracionFinal(t));
+  $("#duracion", hoja).textContent = formatoTiempo(duracionFinal(t)) || "completa";
 }
 
 async function buscarSugerencia(t) {
@@ -491,14 +497,14 @@ function fijarTiempo(t, cual, segundos) {
   if (segundos == null) segundos = cual === "start" ? 0 : t.dur;
   segundos = Math.max(0, Math.min(t.dur || Infinity, segundos));
   if (cual === "start") t.start = segundos > 0 ? Math.round(segundos * 10) / 10 : null;
-  else t.end = segundos < t.dur ? Math.round(segundos * 10) / 10 : null;
+  else t.end = segundos && (!t.dur || segundos < t.dur) ? Math.round(segundos * 10) / 10 : null;
   if (t.start && t.end && t.end <= t.start) {
     avisar("El final tiene que ser después del inicio.");
     if (cual === "start") t.start = null;
     else t.end = null;
   }
   const entrada = $(`[data-tiempo="${cual}"]`, hoja);
-  if (entrada) entrada.value = formatoTiempo(cual === "start" ? t.start || 0 : t.end ?? t.dur);
+  if (entrada) entrada.value = formatoTiempo(cual === "start" ? t.start || 0 : t.end ?? (t.dur || null));
   pintarCorte();
   actualizarFila(estado.editando);
   guardar();
@@ -514,6 +520,19 @@ async function abrirReproductor(t) {
       videoId: t.id,
       playerVars: { playsinline: 1, rel: 0, origin: location.origin, start: Math.floor(t.start || 0) },
       events: {
+        // Los videos leídos desde la página no traen duración: la da el reproductor.
+        onReady: (e) => {
+          const d = Math.round(e.target.getDuration?.() || 0);
+          if (!t.dur && d) {
+            t.dur = d;
+            const fin = $('[data-tiempo="end"]', hoja);
+            if (fin && !t.end) fin.placeholder = formatoTiempo(d);
+            pintarCorte();
+            actualizarFila(estado.editando);
+            actualizarSeleccion();
+            guardar();
+          }
+        },
         onStateChange: (e) => document.body.classList.toggle("girando", e.data === YT.PlayerState.PLAYING),
         // 101 y 150: el dueño del video no deja reproducirlo fuera de YouTube (pasa mucho con discográficas).
         onError: () => {
@@ -726,10 +745,11 @@ function abrirAjustes() {
         </div>
       </div>
       <div class="bloque">
-        <div class="campo"><span>Carpeta de destino</span>
-          <small>Donde se guardan los mp3. Para Spotify: <b>En mi iPhone → Spotify</b>.</small>
+        <div class="campo"><span>Dónde se guarda la música</span>
+          <div class="segmentos" data-ajuste="destino">${Object.entries(RUTAS).map(([v, t]) => opcion("destino", v, t, destino())).join("")}</div>
+          <small>Después tocá el botón y elegí <b>En mi iPhone → ${RUTAS[destino()]}</b> en la ventana que se abre.</small>
         </div>
-        <a class="boton suave" href="${esc(linkAShell(a.app, "MP3CARPETA"))}">Cambiar carpeta</a>
+        <a class="boton suave" href="${esc(linkAShell(a.app, "MP3CARPETA:" + destino()))}">Elegir la carpeta</a>
         <div class="campo"><span>App que descarga</span>
           <div class="segmentos" data-ajuste="app">${[["ashellmini", "a-Shell mini"], ["ashell", "a-Shell"]].map(([v, t]) => opcion("app", v, t, a.app)).join("")}</div>
           <small>Si tenés instalada la versión completa de a-Shell, podés usar esa.</small>
@@ -742,15 +762,29 @@ function abrirAjustes() {
 
 const esIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
+const RUTAS = { spotify: "Spotify", descargas: "Descargas" };
+const destino = () => estado.ajustes.destino || "spotify";
+
+const mockRuta = (carpeta) => `
+  <div class="mock mock-ruta">
+    <span>En mi iPhone</span><span class="flecha">›</span><span class="si">${carpeta}</span>
+  </div>`;
+
+const mockAlerta = () => `
+  <div class="mock mock-alerta">
+    <p>¿Abrir esta página en "a-Shell mini"?</p>
+    <div><span>Cancelar</span><span class="si">Abrir</span></div>
+  </div>`;
+
 const PASOS_TUTORIAL = [
   {
     titulo: "Bienvenido a Lado B",
-    texto: "Pasá videos y playlists de YouTube a mp3 con nombre, artista, álbum y portada. Gratis, sin cuentas y directo a tu iPhone.",
+    texto: () => "Pasá videos y playlists de YouTube a mp3 con nombre, artista, álbum y portada. Gratis, sin cuentas y directo a tu iPhone.",
     visual: () => casete("Tu música, en casete", "Bienvenida"),
   },
   {
     titulo: "Instalá a-Shell mini",
-    texto: "Es una app gratuita que hace la descarga dentro de tu teléfono. Solo hay que instalarla: no vas a tener que aprender a usarla.",
+    texto: () => "Es una app gratuita que hace la descarga dentro de tu teléfono. Solo hay que instalarla: no vas a tener que aprender a usarla.",
     visual: () => `
       <div class="mock mock-app">
         <span class="mock-icono">&gt;_</span>
@@ -759,29 +793,38 @@ const PASOS_TUTORIAL = [
     extra: () => `<a class="boton suave ancho" href="${esc(CONFIG.appStoreAShell)}" target="_blank" rel="noopener">Abrir en la App Store</a>`,
   },
   {
-    titulo: "Pegá un link",
-    texto: "En YouTube tocá Compartir → Copiar enlace y pegalo en Lado B. Safari te va a preguntar esto: tocá Abrir. La primera vez tarda uno o dos minutos en prepararse.",
+    titulo: "¿Dónde guardo la música?",
+    texto: () => "En la carpeta de Spotify los temas aparecen directo en la app. En Descargas los encontrás en Archivos, para usarlos donde quieras. Se puede cambiar después en Ajustes.",
     visual: () => `
-      <div class="mock mock-alerta">
-        <p>¿Abrir esta página en "a-Shell mini"?</p>
-        <div><span>Cancelar</span><span class="si">Abrir</span></div>
+      <div class="opciones-destino" role="group" aria-label="Carpeta">
+        ${Object.entries(RUTAS).map(([clave, nombre]) => `
+          <button class="opcion-destino" data-accion="elegir-destino" data-destino="${clave}" aria-pressed="${destino() === clave}">
+            <b>${nombre}</b><small>${clave === "spotify" ? "Se escuchan en Spotify" : "Quedan en Archivos"}</small>
+          </button>`).join("")}
       </div>`,
   },
   {
-    titulo: "Editá y descargá",
-    texto: "Tocá cada tema para cambiarle los datos. Al descargar por primera vez se abre una ventana para elegir la carpeta: elegí esta y tocá Abrir. Al terminar volvés solo a Lado B.",
-    visual: () => `
-      <div class="mock mock-ruta">
-        <span>En mi iPhone</span><span class="flecha">›</span><span class="si">Spotify</span>
-      </div>`,
+    titulo: "Preparalo una vez",
+    texto: () => `Tocá Preparar: Safari pregunta si abrir a-Shell mini (tocá Abrir), instala lo que necesita en uno o dos minutos y te pide confirmar la carpeta <b>En mi iPhone → ${RUTAS[destino()]}</b>. Después volvés solo acá.`,
+    visual: mockAlerta,
+    extra: () => guardado.leer("preparado")
+      ? '<p class="listo-preparado">Ya está preparado.</p>'
+      : `<a class="boton primario ancho" href="${esc(linkAShell(estado.ajustes.app, "MP3PREPARAR:" + destino()))}">Preparar</a>`,
   },
   {
-    titulo: "Escuchalo en Spotify",
-    texto: "En Spotify: tu foto → Configuración y privacidad → Archivos locales, y activá esta opción. Tus temas aparecen en Tu biblioteca → Archivos locales.",
-    visual: () => `
+    titulo: "Pegá, editá y descargá",
+    texto: () => "Copiá el link en YouTube (Compartir → Copiar enlace), pegalo en Lado B y tocá Leer. Editá nombre, artista, álbum y portada, y tocá Descargar: a-Shell mini aparece unos segundos y volvés con el aviso de Listo.",
+    visual: () => casete("Pegá · Editá · Descargá", "Cómo se usa"),
+  },
+  {
+    titulo: "Escuchalo",
+    texto: () => destino() === "spotify"
+      ? "En Spotify: tu foto → Configuración y privacidad → Archivos locales, y activá esta opción. Tus temas aparecen en Tu biblioteca → Archivos locales."
+      : "Tus temas quedan en la app Archivos → En mi iPhone → Descargas, uno por archivo, listos para abrir o compartir.",
+    visual: () => destino() === "spotify" ? `
       <div class="mock mock-ajuste">
         <span>Mostrar archivos de audio de este dispositivo</span><i class="mock-interruptor"></i>
-      </div>`,
+      </div>` : mockRuta("Descargas"),
   },
 ];
 
@@ -793,10 +836,10 @@ function abrirTutorial(paso) {
     titulo: "Cómo funciona",
     cabeza: `<span class="pos">${paso + 1}/${PASOS_TUTORIAL.length}</span>`,
     cuerpo: `
-      <div class="tutorial">
+      <div class="tutorial" data-paso="${paso}">
         <div class="tutorial-visual">${p.visual()}</div>
         <h3>${p.titulo}</h3>
-        <p>${p.texto}</p>
+        <p>${p.texto()}</p>
         ${p.extra ? p.extra() : ""}
         <div class="puntos" aria-hidden="true">${PASOS_TUTORIAL.map((_, k) => `<i class="${k === paso ? "activo" : ""}"></i>`).join("")}</div>
       </div>`,
@@ -804,8 +847,13 @@ function abrirTutorial(paso) {
       ${paso > 0 ? `<button class="boton suave" data-accion="tutorial-paso" data-paso="${paso - 1}">Atrás</button>` : ""}
       ${ultimo
         ? '<button class="boton primario" data-accion="tutorial-fin">Empezar</button>'
-        : `<button class="boton primario" data-accion="tutorial-paso" data-paso="${paso + 1}">Siguiente</button>`}`,
+        : `<button class="boton ${PASOS_TUTORIAL[paso].extra && paso === 3 && !guardado.leer("preparado") ? "suave" : "primario"}" data-accion="tutorial-paso" data-paso="${paso + 1}">${paso === 3 && !guardado.leer("preparado") ? "Después" : "Siguiente"}</button>`}`,
   });
+}
+
+function elegirDestino(clave) {
+  estado.ajustes.destino = clave;
+  guardado.escribir("ajustes", estado.ajustes);
 }
 
 // ------------------------------------------------------- agregar a inicio
@@ -841,7 +889,7 @@ async function abrirAgregarInicio() {
       <ol class="pasos pasos-inicio">
         <li><span>En Safari, tocá <b>Compartir</b> <span class="chip">${icono("compartir")}</span>. Si no lo ves, está dentro del botón <b>···</b>.</span></li>
         <li><span>Bajá y tocá <b>Agregar a inicio</b> <span class="chip">${icono("sumar")}</span>.</span></li>
-        <li><span>Si aparece <b>Abrir como app web</b>, dejalo <b>apagado</b>: así, cuando a-Shell mini termina, volvés al mismo lugar.</span></li>
+        <li><span>Si aparece <b>Abrir como app web</b>, mejor <b>apagalo</b>: Lado B funciona en Safari. Si queda prendido también anda, pero pasa un segundo por otra pantalla.</span></li>
         <li><span>Tocá <b>Agregar</b>. El nombre <b>Lado B</b> y el casete ya vienen puestos.</span></li>
       </ol>
       ${esIOS() ? "" : '<p class="nota">Esto es para el iPhone. En la computadora, guardala en favoritos.</p>'}`,
@@ -859,18 +907,28 @@ function aplicarTema() {
 
 async function abrirDescarga(lista) {
   const faltan = lista.filter((t) => !t.title.trim() || !t.artist.trim()).length;
-  const segundos = lista.reduce((a, t) => a + duracionFinal(t), 0);
+  const segundos = lista.reduce((a, t) => a + (duracionFinal(t) || 0), 0);
   const trabajo = armarTrabajo(lista, estado.ajustes);
   const link = linkAShell(estado.ajustes.app, "MP3JOB:" + (await comprimir(trabajo)));
-  const primeraVez = !guardado.leer("descargo");
+  const preparado = guardado.leer("preparado") || guardado.leer("descargo");
+  hoja._lista = lista;
   abrirHoja({
     titulo: `Descargar ${lista.length === 1 ? "1 tema" : lista.length + " temas"}`,
     cuerpo: `
       ${faltan ? `<div class="aviso"><span>${faltan === 1 ? "Un tema no tiene" : `${faltan} temas no tienen`} título o artista. Se puede descargar igual.</span></div>` : ""}
+      ${preparado ? "" : `
+      <div class="campo"><span>¿Dónde guardo la música?</span>
+        <div class="opciones-destino" role="group">
+          ${Object.entries(RUTAS).map(([clave, nombre]) => `
+            <button class="opcion-destino" data-accion="elegir-destino" data-destino="${clave}" aria-pressed="${destino() === clave}">
+              <b>${nombre}</b><small>${clave === "spotify" ? "Se escuchan en Spotify" : "Quedan en Archivos"}</small>
+            </button>`).join("")}
+        </div>
+      </div>`}
       <ol class="pasos">
         <li><span>Safari pregunta si abrir a-Shell mini: tocá <b>Abrir</b>.</span></li>
-        ${primeraVez ? "<li><span><b>Solo esta vez</b>, elegí dónde guardar: <b>En mi iPhone → Spotify</b> y tocá Abrir.</span></li>" : ""}
-        <li><span><b>No bloquees la pantalla</b> mientras graba: ${formatoTiempo(segundos)} de música.</span></li>
+        ${preparado ? "" : `<li><span><b>Solo esta vez</b> instala lo que necesita (uno o dos minutos) y te pide la carpeta: <b>En mi iPhone → ${RUTAS[destino()]}</b>.</span></li>`}
+        <li><span><b>No bloquees la pantalla</b> mientras graba${segundos ? `: ${formatoTiempo(segundos)} de música` : ""}.</span></li>
         <li><span><b>Al terminar volvés acá</b> con el aviso de que está todo listo.</span></li>
       </ol>
       ${esIOS() ? "" : '<p class="nota">Esto funciona en el iPhone con a-Shell mini instalado. Desde la computadora no va a pasar nada.</p>'}
@@ -1010,7 +1068,13 @@ document.addEventListener("click", async (e) => {
       break;
     }
     case "tutorial-paso":
+      if (Number(el.dataset.paso) === 3 && !estado.ajustes.destino) elegirDestino("spotify");
       abrirTutorial(Number(el.dataset.paso));
+      break;
+    case "elegir-destino":
+      elegirDestino(el.dataset.destino);
+      if (hoja.querySelector(".tutorial")) abrirTutorial(2);
+      else abrirDescarga(hoja._lista);
       break;
     case "tutorial-fin":
       guardado.escribir("tutorial", true);
@@ -1091,7 +1155,7 @@ document.addEventListener("change", (e) => {
     const segundos = leerTiempo(el.value);
     if (segundos === undefined) {
       avisar("Escribí el tiempo como minutos:segundos, por ejemplo 1:05.");
-      el.value = formatoTiempo(el.dataset.tiempo === "start" ? t.start || 0 : t.end ?? t.dur);
+      el.value = formatoTiempo(el.dataset.tiempo === "start" ? t.start || 0 : t.end ?? (t.dur || null));
     } else fijarTiempo(t, el.dataset.tiempo, segundos);
   }
   const ajuste = el.closest("[data-ajuste]");
@@ -1102,7 +1166,7 @@ document.addEventListener("change", (e) => {
     estado.ajustes[clave] = valor;
     guardado.escribir("ajustes", estado.ajustes);
     if (clave === "tema") aplicarTema();
-    if (clave === "app") abrirAjustes();
+    if (clave === "app" || clave === "destino") abrirAjustes();
     if (estado.sesion) actualizarSeleccion();
   }
 });
@@ -1111,29 +1175,52 @@ document.addEventListener("submit", (e) => {
   const form = e.target.closest("[data-form]");
   if (!form) return;
   e.preventDefault();
-  if (form.dataset.form === "link") {
-    const link = linkDeYouTube(form.link.value);
-    if (!link) return avisar("Ese no es un link de YouTube. En YouTube tocá Compartir → Copiar enlace.", 4500);
-    location.href = linkAShell(estado.ajustes.app, "MP3URL:" + textoABase64Url(link));
-  }
+  if (form.dataset.form === "link") leerLink(form);
 });
+
+// Un video suelto se lee acá mismo, sin abrir a-Shell. Las playlists (y los
+// videos que YouTube no deja consultar desde otra página) sí van por a-Shell.
+async function leerLink(form) {
+  const link = linkDeYouTube(form.link.value);
+  if (!link) return avisar("Ese no es un link de YouTube. En YouTube tocá Compartir → Copiar enlace.", 4500);
+  const { id, lista } = analizarLink(link);
+  const porAShell = () => (location.href = linkAShell(estado.ajustes.app, "MP3URL:" + textoABase64Url(link)));
+  if (!id) return porAShell();
+
+  const boton = form.querySelector('[type="submit"]');
+  boton.disabled = true;
+  try {
+    const item = await datosDeVideo(id);
+    cargarDesdeDatos({ src: link, items: [item], lista });
+    render();
+    abrirEditor(0);
+  } catch {
+    porAShell();
+  } finally {
+    boton.disabled = false;
+  }
+}
 
 // ----------------------------------------------------------------- arranque
 
 async function cargarDesdeLink(codigo) {
-  const datos = await descomprimir(codigo);
+  cargarDesdeDatos(await descomprimir(codigo));
+}
+
+function cargarDesdeDatos(datos) {
   const clave = hash(datos.src || JSON.stringify(datos.items.map((x) => x.i)));
   const previa = guardado.leer("s:" + clave);
   const editados = new Map((previa?.temas || []).map((t) => [t.id, t]));
   const nuevos = datos.items.map((it) => editados.get(it.i) || temaDesdeItem(it));
   if (datos.f && !previa) for (const t of nuevos) t.sel = t.id === datos.f;
-  estado.sesion = { clave, src: datos.src, pl: datos.pl || "", foco: datos.f || null, temas: nuevos };
+  estado.sesion = { clave, src: datos.src, pl: datos.pl || "", foco: datos.f || null, lista: datos.lista || null, temas: nuevos };
   guardar();
 }
 
 // Vuelta desde a-Shell mini: marca los temas guardados y cuenta qué pasó.
 function mostrarResultado({ ok = [], err = [], dest = "" }) {
   const respaldo = dest.startsWith("a-Shell");
+  if (ok.length) guardado.escribir("preparado", true);
   const porId = new Map(temas().map((t) => [t.id, t]));
   for (const id of ok) {
     const t = porId.get(id);
@@ -1157,7 +1244,7 @@ function mostrarResultado({ ok = [], err = [], dest = "" }) {
         ${casete(`${ok.length} ${ok.length === 1 ? "tema guardado" : "temas guardados"}`, "Grabado")}
         ${respaldo ? `
         <p>Quedaron en <b>Archivos → En mi iPhone → a-Shell mini → Lado B</b>, porque no se eligió otra carpeta.</p>
-        <a class="boton suave" href="${esc(linkAShell(estado.ajustes.app, "MP3CARPETA"))}">Elegir la carpeta de Spotify</a>` : `
+        <a class="boton suave" href="${esc(linkAShell(estado.ajustes.app, "MP3CARPETA:" + destino()))}">Elegir la carpeta de ${RUTAS[destino()]}</a>` : `
         <p>Ya ${ok.length === 1 ? "está" : "están"} en ${dest ? `<b>${esc(dest)}</b>` : "tu carpeta"}. En Spotify: <b>Tu biblioteca → Archivos locales</b>.</p>`}
       </div>` : ""}
       ${err.length ? `
@@ -1201,7 +1288,14 @@ async function arrancar() {
     }
   }
   if (clave === "carpeta") {
+    guardado.escribir("preparado", true);
     avisar(`Listo: ahora se guarda en ${decodeURIComponent(valor)}.`, 4000);
+  }
+  if (clave === "preparado") {
+    // Volvió de preparar todo desde el tutorial: se sigue en el paso siguiente.
+    guardado.escribir("preparado", true);
+    abrirTutorial(4);
+    avisar(`Todo listo: la música se guarda en ${decodeURIComponent(valor)}.`, 4000);
   }
   if (!clave && !guardado.leer("tutorial")) abrirTutorial(0);
   if (clave === "error") {
@@ -1214,7 +1308,7 @@ async function arrancar() {
 }
 
 window.addEventListener("hashchange", () => {
-  if (/^#(d|listo|error|carpeta)=/.test(location.hash)) arrancar();
+  if (/^#(d|listo|error|carpeta|preparado)=/.test(location.hash)) arrancar();
 });
 
 // ------------------------------------------------------------------ versión
@@ -1225,7 +1319,7 @@ window.addEventListener("hashchange", () => {
 // vuelven a bajar los archivos y se recarga. Al publicar, se cambia el número
 // acá y en version.json.
 
-const VERSION = "0.4.1";
+const VERSION = "0.5.0";
 const ARCHIVOS = ["./", "instalar.html", "manifest.webmanifest",
   "assets/app.js", "assets/datos.js", "assets/servicios.js", "assets/config.js", "assets/estilo.css"];
 
@@ -1267,7 +1361,22 @@ async function buscarActualizacion() {
   location.reload();
 }
 
+// Abierta como app desde la pantalla de inicio, Lado B se pasa a Safari: a-Shell
+// siempre vuelve a Safari, y la app de inicio tiene sus propios datos, así
+// que el trabajo quedaría partido en dos lugares.
+function pasarASafari() {
+  const destinoSafari = "x-safari-" + location.href;
+  app.innerHTML = `
+    <section class="inicio">
+      ${casete("Abriendo en Safari…", "Lado B")}
+      <p class="bajada">Lado B funciona desde Safari, porque ahí vuelve a-Shell mini al terminar.</p>
+      <a class="boton primario ancho" href="${esc(destinoSafari)}">Abrir en Safari</a>
+    </section>`;
+  location.href = destinoSafari;
+}
+
 async function iniciar() {
+  if (enPantallaDeInicio() && esIOS()) return pasarASafari();
   const publicada = await versionPublicada();
   // La recarga conserva el #d=… del link, así que no se pierde la lista.
   if (publicada && publicada !== VERSION && !yaSeIntento(publicada)) {
