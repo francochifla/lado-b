@@ -29,7 +29,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.3.0"
+VERSION = "0.3.1"
 WEB_URL = "https://francochifla.github.io/lado-b/"
 
 # Prueba en computadora: MP3_LOCAL=1 imprime los links en vez de abrirlos,
@@ -286,8 +286,12 @@ def nombre_carpeta(carpeta):
 
 # ------------------------------------------------------- modo 1: leer link
 
+ES_YOUTUBE = re.compile(r"https?://(?:[\w-]+\.)*(?:youtube\.com|youtu\.be|youtube-nocookie\.com)/\S*", re.I)
+
+
 def buscar_link(texto):
-    m = re.search(r"https?://\S+", texto)
+    """El primer link de YouTube del texto (puede venir con otras palabras)."""
+    m = ES_YOUTUBE.search(texto)
     return m.group(0) if m else None
 
 
@@ -579,8 +583,12 @@ def main():
             url = buscar_link(texto)
             if url:
                 leer_link(url)
+            elif WEB_URL.rstrip("/") in texto:
+                # Compartieron la propia página (por ejemplo, desde Safari): no
+                # hay nada que leer, se vuelve a ella sin error.
+                abrir(WEB_URL)
             else:
-                volver_con_error("No encontré un link de YouTube en lo que pegaste.")
+                volver_con_error("Ese link no es de YouTube. Copiá el link de un video o una playlist desde YouTube o YouTube Music.")
     except Exception as e:
         motivo = str(e).replace("ERROR: ", "").splitlines()[0][:200] if str(e) else type(e).__name__
         volver_con_error(f"Algo salió mal: {motivo}")

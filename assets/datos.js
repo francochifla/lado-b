@@ -185,6 +185,12 @@ export function linkAShell(app, argumento) {
   return `${app}://${encodeURIComponent(`python -c "${cargar}" ${argumento}`)}`;
 }
 
+// El primer link de YouTube o YouTube Music dentro de un texto, o null.
+export function linkDeYouTube(texto) {
+  const m = (texto || "").match(/https?:\/\/(?:[\w-]+\.)*(?:youtube\.com|youtu\.be|youtube-nocookie\.com)\/\S*/i);
+  return m ? m[0] : null;
+}
+
 export function textoABase64Url(texto) {
   return aBase64Url(new TextEncoder().encode(texto));
 }

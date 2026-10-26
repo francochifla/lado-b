@@ -1,7 +1,7 @@
 import { CONFIG } from "./config.js";
 import {
   armarTrabajo, comprimir, descomprimir, duracionFinal, esMayusculas, formatoTiempo, leerTiempo,
-  linkAShell, portadaDesdeArchivo, temaDesdeItem, textoABase64Url, tipoTitulo, urlPortada,
+  linkAShell, linkDeYouTube, portadaDesdeArchivo, temaDesdeItem, textoABase64Url, tipoTitulo, urlPortada,
 } from "./datos.js";
 import { cargarYouTube, sugerirRecorte } from "./servicios.js";
 
@@ -382,12 +382,14 @@ function abrirEditor(i) {
         <h3 class="seccion-titulo" style="margin:0"><i class="marca-n" style="font-style:normal;margin-right:8px">4</i>Portada</h3>
         <div id="tapas">${opcionesTapa(t)}</div>
       </div>
-      <div class="bloque">
-        <h3 class="seccion-titulo" style="margin:0">Recorte</h3>
+      <details class="recorte" ${t.start || t.end ? "open" : ""}>
+        <summary class="seccion-titulo">Recortar inicio o final <span class="nota">(opcional)</span></summary>
+        <div class="bloque">
         <div id="sugerencia"></div>
         <div class="reproductor" id="reproductor">
-          <button class="boton" data-accion="escuchar">Escuchar acá</button>
+          <button class="boton" data-accion="escuchar">Escuchar para marcar</button>
         </div>
+        <p class="nota">Algunos videos de discográficas no se pueden escuchar fuera de YouTube y muestran "Video unavailable". En ese caso escribí los minutos a mano: el recorte funciona igual.</p>
         <div class="linea-tiempo" aria-hidden="true"><i id="corte"></i></div>
         <div class="tiempos">
           <div class="tiempo">
@@ -409,7 +411,8 @@ function abrirEditor(i) {
         </div>
         <p class="nota">Duración final: <b class="mono" id="duracion">${formatoTiempo(duracionFinal(t))}</b>
           · <button class="enlace" data-accion="sin-recorte">Quitar recorte</button></p>
-      </div>
+        </div>
+      </details>
       <p class="nota mono" style="font-size:12px">Original: ${esc(t.ytTitulo)}${t.canal ? ` · ${esc(t.canal)}` : ""}</p>`,
     pie: `
       <button class="boton suave" data-accion="descargar-uno">Descargar solo este</button>
@@ -468,6 +471,7 @@ async function buscarSugerencia(t) {
     return;
   }
   const partes = [s.start != null && `la música empieza en ${formatoTiempo(s.start)}`, s.end != null && `termina en ${formatoTiempo(s.end)}`].filter(Boolean);
+  caja.closest("details").open = true;
   caja.innerHTML = `
     <div class="sugerencia">
       <span>Según SponsorBlock, ${partes.join(" y ")}.</span>
@@ -916,7 +920,9 @@ document.addEventListener("click", async (e) => {
     case "pegar":
       try {
         const texto = await navigator.clipboard.readText();
-        $('[name="link"]').value = texto.trim();
+        const link = linkDeYouTube(texto);
+        if (!link) return avisar("Lo que copiaste no es un link de YouTube. En YouTube tocá Compartir → Copiar enlace.", 4500);
+        $('[name="link"]').value = link;
       } catch {
         avisar("No tengo permiso para leer el portapapeles. Pegalo a mano.");
       }
@@ -1088,8 +1094,8 @@ document.addEventListener("submit", (e) => {
   if (!form) return;
   e.preventDefault();
   if (form.dataset.form === "link") {
-    const link = form.link.value.trim();
-    if (!/^https?:\/\//.test(link)) return avisar("Eso no parece un link.");
+    const link = linkDeYouTube(form.link.value);
+    if (!link) return avisar("Ese no es un link de YouTube. En YouTube tocá Compartir → Copiar enlace.", 4500);
     location.href = linkAShell(estado.ajustes.app, "MP3URL:" + textoABase64Url(link));
   }
 });
