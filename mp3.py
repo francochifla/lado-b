@@ -31,7 +31,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.4.2"
+VERSION = "0.4.3"
 WEB_URL = "https://francochifla.github.io/lado-b/"
 
 # Prueba en computadora: MP3_LOCAL=1 imprime los links en vez de abrirlos,
@@ -183,15 +183,38 @@ def quitar_complemento_webkit():
         f.write(str(time.time()))
 
 
-def preparar():
-    quitar_complemento_webkit()
-    marca = os.path.join(BASE, ".actualizado")
-    faltan = False
+def sumar_carpetas_de_modulos():
+    """pip instala en la carpeta de paquetes del usuario (en a-Shell,
+    ~/Library/lib/pythonX.Y/site-packages). Si no existía cuando arrancó
+    Python, no está en sys.path y lo recién instalado no se encuentra hasta la
+    próxima vez: se suma a mano."""
+    import site
+
+    version = f"python{sys.version_info.major}.{sys.version_info.minor}"
+    carpetas = [os.path.join(os.path.expanduser("~"), "Library", "lib", version, "site-packages")]
+    try:
+        carpetas.insert(0, site.getusersitepackages())
+    except Exception:
+        pass
+    for carpeta in carpetas:
+        if os.path.isdir(carpeta) and carpeta not in sys.path:
+            site.addsitedir(carpeta)
+    importlib.invalidate_caches()
+
+
+def herramientas_instaladas():
     try:
         import yt_dlp  # noqa: F401
         import mutagen  # noqa: F401
+        return True
     except ImportError:
-        faltan = True
+        return False
+
+
+def preparar():
+    quitar_complemento_webkit()
+    marca = os.path.join(BASE, ".actualizado")
+    faltan = not herramientas_instaladas()
 
     vieja = True
     if os.path.exists(marca):
@@ -209,7 +232,10 @@ def preparar():
     else:
         casete("Poniendo al día", ["Unos segundos y seguimos."])
     comando(f"pip install -q --disable-pip-version-check --upgrade {DEPENDENCIAS}")
-    importlib.invalidate_caches()
+    sumar_carpetas_de_modulos()
+    if not herramientas_instaladas():
+        # Sin la marca, la próxima vez se vuelve a intentar.
+        raise RuntimeError("no se pudieron instalar las herramientas. Revisá que haya internet y probá de nuevo.")
     with open(marca, "w") as f:
         f.write(str(time.time()))
 
